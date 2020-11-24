@@ -7,9 +7,9 @@ namespace NRules.Rete
 {
     internal interface IFactAggregator
     {
-        void Add(Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts);
-        void Modify(Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts);
-        void Remove(Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts);
+        void Add(AggregationContext context, Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts);
+        void Modify(AggregationContext context, Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts);
+        void Remove(AggregationContext context, Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts);
         IEnumerable<Fact> AggregateFacts { get; }
     }
 
@@ -25,21 +25,21 @@ namespace NRules.Rete
 
         public IEnumerable<Fact> AggregateFacts => _aggregateFactMap.Values;
         
-        public void Add(Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts)
+        public void Add(AggregationContext context, Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts)
         {
-            var results = _aggregator.Add(tuple, facts);
+            var results = _aggregator.Add(context, tuple, facts);
             AddAggregationResult(aggregation, tuple, results);
         }
 
-        public void Modify(Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts)
+        public void Modify(AggregationContext context, Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts)
         {
-            var results = _aggregator.Modify(tuple, facts);
+            var results = _aggregator.Modify(context, tuple, facts);
             AddAggregationResult(aggregation, tuple, results);
         }
 
-        public void Remove(Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts)
+        public void Remove(AggregationContext context, Aggregation aggregation, Tuple tuple, IEnumerable<Fact> facts)
         {
-            var results = _aggregator.Remove(tuple, facts);
+            var results = _aggregator.Remove(context, tuple, facts);
             AddAggregationResult(aggregation, tuple, results);
         }
 
@@ -78,7 +78,7 @@ namespace NRules.Rete
             if (!_aggregateFactMap.TryGetValue(result.Previous ?? result.Aggregate, out var fact))
             {
                 throw new InvalidOperationException(
-                    $"Fact for aggregate object does not exist. AggregatorTye={_aggregator.GetType()}, FactType={result.Aggregate.GetType()}");
+                    $"Fact for aggregate object does not exist. AggregatorType={_aggregator.GetType()}, FactType={result.Aggregate.GetType()}");
             }
 
             fact.Source = new AggregateFactSource(result.Source);
@@ -96,7 +96,7 @@ namespace NRules.Rete
             if (!_aggregateFactMap.TryGetValue(result.Aggregate, out var fact))
             {
                 throw new InvalidOperationException(
-                    $"Fact for aggregate object does not exist. AggregatorTye={_aggregator.GetType()}, FactType={result.Aggregate.GetType()}");
+                    $"Fact for aggregate object does not exist. AggregatorType={_aggregator.GetType()}, FactType={result.Aggregate.GetType()}");
             }
 
             _aggregateFactMap.Remove(fact.RawObject);

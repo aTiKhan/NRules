@@ -1,28 +1,28 @@
 using System;
-using System.Collections.Generic;
 
 namespace NRules.RuleModel
 {
     /// <summary>
     /// Rule element that represents a pattern that matches facts.
     /// </summary>
-    public class PatternElement : RuleLeftElement
+    public class PatternElement : RuleElement
     {
-        private readonly List<ConditionElement> _conditions;
+        public const string ConditionName = "Condition";
 
-        internal PatternElement(Declaration declaration, IEnumerable<Declaration> declarations, IEnumerable<ConditionElement> conditions)
-            : base(declarations)
+        internal PatternElement(Declaration declaration, ExpressionCollection expressions, RuleElement source)
         {
             Declaration = declaration;
             ValueType = declaration.Type;
-            _conditions = new List<ConditionElement>(conditions);
+            Expressions = expressions;
+            Source = source;
+
+            AddExport(declaration);
+            AddImports(expressions);
+            AddImports(source);
         }
 
-        internal PatternElement(Declaration declaration, IEnumerable<Declaration> declarations, IEnumerable<ConditionElement> conditions, PatternSourceElement source)
-            : this(declaration, declarations, conditions)
-        {
-            Source = source;
-        }
+        /// <inheritdoc cref="RuleElement.ElementType"/>
+        public override ElementType ElementType => ElementType.Pattern;
 
         /// <summary>
         /// Declaration that references the pattern.
@@ -32,7 +32,7 @@ namespace NRules.RuleModel
         /// <summary>
         /// Optional pattern source element.
         /// </summary>
-        public PatternSourceElement Source { get; }
+        public RuleElement Source { get; }
 
         /// <summary>
         /// Type of the values that the pattern matches.
@@ -40,9 +40,9 @@ namespace NRules.RuleModel
         public Type ValueType { get; }
 
         /// <summary>
-        /// List of conditions the pattern checks.
+        /// Expressions used by the pattern to match elements.
         /// </summary>
-        public IEnumerable<ConditionElement> Conditions => _conditions;
+        public ExpressionCollection Expressions { get; }
 
         internal override void Accept<TContext>(TContext context, RuleElementVisitor<TContext> visitor)
         {

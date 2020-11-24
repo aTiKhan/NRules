@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using NRules.Diagnostics;
 using NRules.Extensibility;
 using NRules.Rete;
@@ -23,28 +24,34 @@ namespace NRules
     /// <event cref="IEventProvider.ActivationDeletedEvent">When a set of facts no longer matches a rule.</event>
     /// <event cref="IEventProvider.RuleFiringEvent">Before rule's actions are executed.</event>
     /// <event cref="IEventProvider.RuleFiredEvent">After rule's actions are executed.</event>
-    /// <event cref="IEventProvider.ConditionFailedEvent">When there is an error during condition evaluation,
+    /// <event cref="IEventProvider.LhsExpressionEvaluatedEvent">When an left-hand side expression was evaluated.</event>
+    /// <event cref="IEventProvider.LhsExpressionFailedEvent">When there is an error during left-hand side expression evaluation,
     /// before throwing exception to the client.</event>
-    /// <event cref="IEventProvider.BindingFailedEvent">When there is an error during binding expression evaluation,
+    /// <event cref="IEventProvider.AgendaExpressionEvaluatedEvent">When an agenda expression was evaluated.</event>
+    /// <event cref="IEventProvider.AgendaExpressionFailedEvent">When there is an error during agenda expression evaluation,
     /// before throwing exception to the client.</event>
-    /// <event cref="IEventProvider.AggregateFailedEvent">When there is an error during aggregate expression evaluation,
+    /// <event cref="IEventProvider.RhsExpressionEvaluatedEvent">When an right-hand side expression was evaluated.</event>
+    /// <event cref="IEventProvider.RhsExpressionFailedEvent">When there is an error during right-hand side expression evaluation,
     /// before throwing exception to the client.</event>
-    /// <event cref="IEventProvider.AgendaFilterFailedEvent">When there is an error during agenda filter evaluation,
-    /// before throwing exception to the client.</event>
-    /// <event cref="IEventProvider.ActionFailedEvent">When there is an error during action evaluation,
-    /// before throwing exception to the client.</event>
-    /// <exception cref="RuleConditionEvaluationException">Error while evaluating any of the rules' conditions.
-    /// This exception can also be observed as an event <see cref="IEventProvider.ConditionFailedEvent"/>.</exception>
-    /// <exception cref="RuleExpressionEvaluationException">Error while evaluating any of the rules' binding or aggregate expressions.
-    /// This exception can also be observed as events <see cref="IEventProvider.BindingFailedEvent"/>, <see cref="IEventProvider.AggregateFailedEvent"/>.</exception>
-    /// <exception cref="AgendaExpressionEvaluationException">Error while evaluating any of the agenda filters.
-    /// This exception can also be observed as an event <see cref="IEventProvider.AgendaFilterFailedEvent"/>.</exception>
-    /// <exception cref="RuleActionEvaluationException">Error while evaluating any of the rules' actions.
-    /// This exception can also be observed as an event <see cref="IEventProvider.ActionFailedEvent"/>.</exception>
+    /// <exception cref="RuleLhsExpressionEvaluationException">Error while evaluating any of the rules' left-hand side expressons.
+    /// This exception can also be observed as an event <see cref="IEventProvider.LhsExpressionEvaluatedEvent"/>.</exception>
+    /// <exception cref="AgendaExpressionEvaluationException">Error while evaluating any of the agenda expressions.
+    /// This exception can also be observed as an event <see cref="IEventProvider.AgendaExpressionFailedEvent"/>.</exception>
+    /// <exception cref="RuleRhsExpressionEvaluationException">Error while evaluating any of the rules' right-hand side expressions.
+    /// This exception can also be observed as an event <see cref="IEventProvider.RhsExpressionFailedEvent"/>.</exception>
     /// <seealso cref="ISessionFactory"/>
     /// <threadsafety instance="false" />
     public interface ISession
     {
+        /// <summary>
+        /// Controls how the engine propagates linked facts from rules that insert/update/retract linked facts in their actions.
+        /// By default, <see cref="AutoPropagateLinkedFacts"/> is <c>true</c> and the engine automatically
+        /// propagates linked facts at the end of the rule's actions.
+        /// If <see cref="AutoPropagateLinkedFacts"/> is <c>false</c>, linked facts are queued, and have to be
+        /// explicitly propagated by calling <see cref="PropagateLinked"/> method.
+        /// </summary>
+        bool AutoPropagateLinkedFacts { get; set; }
+
         /// <summary>
         /// Agenda, which represents a store for rule matches.
         /// </summary>
@@ -85,6 +92,16 @@ namespace NRules
         IFactResult TryInsertAll(IEnumerable<object> facts);
 
         /// <summary>
+        /// Inserts new facts to the rules engine memory if the facts don't exist.
+        /// If any of the facts exists in the engine, the behavior is defined by <see cref="BatchOptions"/>.
+        /// </summary>
+        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <param name="facts">Facts to insert.</param>
+        /// <param name="options">Options that define behavior of the batch operation.</param>
+        /// <returns>Result of facts insertion.</returns>
+        IFactResult TryInsertAll(IEnumerable<object> facts, BatchOptions options);
+
+        /// <summary>
         /// Inserts new fact to the rules engine memory.
         /// </summary>
         /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
@@ -115,6 +132,16 @@ namespace NRules
         /// <param name="facts">Facts to update.</param>
         /// <returns>Result of facts update.</returns>
         IFactResult TryUpdateAll(IEnumerable<object> facts);
+
+        /// <summary>
+        /// Updates existing facts in the rules engine memory if the facts exist.
+        /// If any of the facts don't exist in the engine, the behavior is defined by <see cref="BatchOptions"/>.
+        /// </summary>
+        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <param name="facts">Facts to update.</param>
+        /// <param name="options">Options that define behavior of the batch operation.</param>
+        /// <returns>Result of facts update.</returns>
+        IFactResult TryUpdateAll(IEnumerable<object> facts, BatchOptions options);
 
         /// <summary>
         /// Updates existing fact in the rules engine memory.
@@ -150,6 +177,16 @@ namespace NRules
         IFactResult TryRetractAll(IEnumerable<object> facts);
 
         /// <summary>
+        /// Removes existing facts from the rules engine memory if the facts exist.
+        /// If any of the facts don't exist in the engine, the behavior is defined by <see cref="BatchOptions"/>.
+        /// </summary>
+        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <param name="facts">Facts to remove.</param>
+        /// <param name="options">Options that define behavior of the batch operation.</param>
+        /// <returns>Result of facts removal.</returns>
+        IFactResult TryRetractAll(IEnumerable<object> facts, BatchOptions options);
+
+        /// <summary>
         /// Removes existing fact from the rules engine memory.
         /// </summary>
         /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
@@ -166,19 +203,27 @@ namespace NRules
         bool TryRetract(object facts);
 
         /// <summary>
-        /// Starts rules execution cycle.
-        /// This method blocks until there are no more rules to fire.
+        /// Propagates all queued linked facts.
         /// </summary>
-        /// <returns>Number of rules that fired.</returns>
-        int Fire();
+        /// <returns>Collection of propagated sets of linked facts.</returns>
+        IEnumerable<ILinkedFactSet> PropagateLinked();
 
         /// <summary>
         /// Starts rules execution cycle.
-        /// This method blocks until maximum number of rules fired or there are no more rules to fire.
+        /// This method blocks until there are no more rules to fire or cancellation is requested.
+        /// </summary>
+        /// <param name="cancellationToken">Enables cooperative cancellation of the rules execution cycle.</param>
+        /// <returns>Number of rules that fired.</returns>
+        int Fire(CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Starts rules execution cycle.
+        /// This method blocks until maximum number of rules fired, cancellation is requested or there are no more rules to fire.
         /// </summary>
         /// <param name="maxRulesNumber">Maximum number of rules to fire.</param>
+        /// <param name="cancellationToken">Enables cooperative cancellation of the rules execution cycle.</param>
         /// <returns>Number of rules that fired.</returns>
-        int Fire(int maxRulesNumber);
+        int Fire(int maxRulesNumber, CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
         /// Creates a LINQ query to retrieve facts of a given type from the rules engine's memory.
@@ -194,9 +239,10 @@ namespace NRules
 
         IEnumerable<object> GetLinkedKeys(Activation activation);
         object GetLinked(Activation activation, object key);
-        void InsertLinked(Activation activation, object key, object fact);
-        void UpdateLinked(Activation activation, object key, object fact);
-        void RetractLinked(Activation activation, object key, object fact);
+        void QueueInsertLinked(Activation activation, IEnumerable<KeyValuePair<object, object>> keyedFacts);
+        void QueueUpdateLinked(Activation activation, IEnumerable<KeyValuePair<object, object>> keyedFacts);
+        void QueueRetractLinked(Activation activation, IEnumerable<KeyValuePair<object, object>> keyedFacts);
+        void QueueRetractLinked(Activation activation);
     }
 
     /// <summary>
@@ -204,12 +250,15 @@ namespace NRules
     /// </summary>
     public sealed class Session : ISessionInternal, ISessionSnapshotProvider
     {
+        private static readonly ILinkedFactSet[] EmptyLinkedFactResult = new ILinkedFactSet[0];
+
         private readonly IAgendaInternal _agenda;
         private readonly INetwork _network;
         private readonly IWorkingMemory _workingMemory;
         private readonly IEventAggregator _eventAggregator;
         private readonly IActionExecutor _actionExecutor;
         private readonly IExecutionContext _executionContext;
+        private readonly Queue<LinkedFactSet> _linkedFacts = new Queue<LinkedFactSet>();
 
         internal Session(
             INetwork network,
@@ -229,8 +278,10 @@ namespace NRules
             _executionContext = new ExecutionContext(this, _workingMemory, _agenda, _eventAggregator, idGenerator);
             DependencyResolver = dependencyResolver;
             ActionInterceptor = actionInterceptor;
+            AutoPropagateLinkedFacts = true;
         }
 
+        public bool AutoPropagateLinkedFacts { get; set; }
         public IAgenda Agenda => _agenda;
         public IEventProvider Events => _eventAggregator;
         public IDependencyResolver DependencyResolver { get; set; }
@@ -254,6 +305,11 @@ namespace NRules
 
         public IFactResult TryInsertAll(IEnumerable<object> facts)
         {
+            return TryInsertAll(facts, BatchOptions.AllOrNothing);
+        }
+
+        public IFactResult TryInsertAll(IEnumerable<object> facts, BatchOptions options)
+        {
             if (facts == null)
             {
                 throw new ArgumentNullException(nameof(facts));
@@ -276,7 +332,7 @@ namespace NRules
             }
 
             var result = new FactResult(failed);
-            if (result.FailedCount == 0)
+            if (result.FailedCount == 0 || options == BatchOptions.SkipFailed)
             {
                 foreach (var fact in toPropagate)
                 {
@@ -284,6 +340,8 @@ namespace NRules
                 }
 
                 _network.PropagateAssert(_executionContext, toPropagate);
+
+                PropagateLinked();
             }
             return result;
         }
@@ -310,6 +368,11 @@ namespace NRules
 
         public IFactResult TryUpdateAll(IEnumerable<object> facts)
         {
+            return TryUpdateAll(facts, BatchOptions.AllOrNothing);
+        }
+
+        public IFactResult TryUpdateAll(IEnumerable<object> facts, BatchOptions options)
+        {
             if (facts == null)
             {
                 throw new ArgumentNullException(nameof(facts));
@@ -332,7 +395,7 @@ namespace NRules
             }
 
             var result = new FactResult(failed);
-            if (result.FailedCount == 0)
+            if (result.FailedCount == 0 || options == BatchOptions.SkipFailed)
             {
                 foreach (var fact in toPropagate)
                 {
@@ -340,6 +403,8 @@ namespace NRules
                 }
 
                 _network.PropagateUpdate(_executionContext, toPropagate);
+
+                PropagateLinked();
             }
             return result;
         }
@@ -366,6 +431,11 @@ namespace NRules
 
         public IFactResult TryRetractAll(IEnumerable<object> facts)
         {
+            return TryRetractAll(facts, BatchOptions.AllOrNothing);
+        }
+
+        public IFactResult TryRetractAll(IEnumerable<object> facts, BatchOptions options)
+        {
             if (facts == null)
             {
                 throw new ArgumentNullException(nameof(facts));
@@ -387,7 +457,7 @@ namespace NRules
             }
 
             var result = new FactResult(failed);
-            if (result.FailedCount == 0)
+            if (result.FailedCount == 0 || options == BatchOptions.SkipFailed)
             {
                 _network.PropagateRetract(_executionContext, toPropagate);
 
@@ -395,6 +465,8 @@ namespace NRules
                 {
                     _workingMemory.RemoveFact(fact);
                 }
+
+                PropagateLinked();
             }
             return result;
         }
@@ -410,6 +482,39 @@ namespace NRules
             return result.FailedCount == 0;
         }
 
+        public IEnumerable<ILinkedFactSet> PropagateLinked()
+        {
+            if (_linkedFacts.Count == 0)
+                return EmptyLinkedFactResult;
+
+            var factSets = new List<ILinkedFactSet>(_linkedFacts.Count);
+            while (_linkedFacts.Count > 0)
+            {
+                var item = _linkedFacts.Dequeue();
+                factSets.Add(item);
+                switch (item.Action)
+                {
+                    case LinkedFactAction.Insert:
+                        _network.PropagateAssert(_executionContext, item.Facts);
+                        break;
+                    case LinkedFactAction.Update:
+                        _network.PropagateUpdate(_executionContext, item.Facts);
+                        break;
+                    case LinkedFactAction.Retract:
+                        _network.PropagateRetract(_executionContext, item.Facts);
+                        foreach (var fact in item.Facts)
+                        {
+                            _workingMemory.RemoveFact(fact);
+                        }
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException($"Unrecognized linked fact action. Action={item.Action}");
+                }
+            }
+
+            return factSets;
+        }
+
         public IEnumerable<object> GetLinkedKeys(Activation activation)
         {
             var keys = _workingMemory.GetLinkedKeys(activation);
@@ -422,84 +527,134 @@ namespace NRules
             return factWrapper?.Object;
         }
 
-        public void InsertLinked(Activation activation, object key, object fact)
+        public void QueueInsertLinked(Activation activation, IEnumerable<KeyValuePair<object, object>> keyedFacts)
         {
-            if (key == null)
+            var toAdd = new List<Tuple<object, Fact>>();
+            var toPropagate = new List<Fact>();
+            foreach (var keyedFact in keyedFacts)
             {
-                throw new ArgumentNullException(nameof(key));
+                var key = keyedFact.Key;
+                var factWrapper = _workingMemory.GetLinkedFact(activation, key);
+                if (factWrapper != null)
+                {
+                    throw new ArgumentException($"Linked fact already exists. Key={key}");
+                }
+                factWrapper = new SyntheticFact(keyedFact.Value);
+                factWrapper.Source = new LinkedFactSource(activation);
+                toAdd.Add(System.Tuple.Create(key, factWrapper));
+                toPropagate.Add(factWrapper);
             }
-            if (fact == null)
+            foreach (var item in toAdd)
             {
-                throw new ArgumentNullException(nameof(fact));
+                _workingMemory.AddLinkedFact(activation, item.Item1, item.Item2);
             }
-            var factWrapper = _workingMemory.GetLinkedFact(activation, key);
-            if (factWrapper != null)
+
+            LinkedFactSet current;
+            if (_linkedFacts.Count == 0 || (current = _linkedFacts.Peek()).Action != LinkedFactAction.Insert)
             {
-                throw new ArgumentException($"Linked fact already exists. Key={key}", nameof(fact));
+                current = new LinkedFactSet(LinkedFactAction.Insert);
+                _linkedFacts.Enqueue(current);
             }
-            factWrapper = new SyntheticFact(fact);
-            factWrapper.Source = new LinkedFactSource(activation);
-            _workingMemory.AddLinkedFact(activation, key, factWrapper);
-            _network.PropagateAssert(_executionContext, new List<Fact> {factWrapper});
+            current.Facts.AddRange(toPropagate);
         }
 
-        public void UpdateLinked(Activation activation, object key, object fact)
+        public void QueueUpdateLinked(Activation activation, IEnumerable<KeyValuePair<object, object>> keyedFacts)
         {
-            if (key == null)
+            var toUpdate = new List<Tuple<object, Fact, object>>();
+            var toPropagate = new List<Fact>();
+            foreach (var keyedFact in keyedFacts)
             {
-                throw new ArgumentNullException(nameof(key));
+                var key = keyedFact.Key;
+                var factWrapper = _workingMemory.GetLinkedFact(activation, key);
+                if (factWrapper == null)
+                {
+                    throw new ArgumentException($"Linked fact does not exist. Key={key}");
+                }
+                factWrapper.Source = new LinkedFactSource(activation);
+                toUpdate.Add(System.Tuple.Create(key, factWrapper, keyedFact.Value));
+                toPropagate.Add(factWrapper);
             }
-            if (fact == null)
+            foreach (var item in toUpdate)
             {
-                throw new ArgumentNullException(nameof(fact));
+                _workingMemory.UpdateLinkedFact(activation, item.Item1, item.Item2, item.Item3);
             }
-            var factWrapper = _workingMemory.GetLinkedFact(activation, key);
-            if (factWrapper == null)
+
+            LinkedFactSet current;
+            if (_linkedFacts.Count == 0 || (current = _linkedFacts.Peek()).Action != LinkedFactAction.Update)
             {
-                throw new ArgumentException($"Linked fact does not exist. Key={key}", nameof(fact));
+                current = new LinkedFactSet(LinkedFactAction.Update);
+                _linkedFacts.Enqueue(current);
             }
-            factWrapper.Source = new LinkedFactSource(activation);
-            _workingMemory.UpdateLinkedFact(activation, key, factWrapper, fact);
-            _network.PropagateUpdate(_executionContext, new List<Fact> {factWrapper});
+            current.Facts.AddRange(toPropagate);
         }
 
-        public void RetractLinked(Activation activation, object key, object fact)
+        public void QueueRetractLinked(Activation activation, IEnumerable<KeyValuePair<object, object>> keyedFacts)
         {
-            if (key == null)
+            var toRemove = new List<Tuple<object, Fact>>();
+            var toPropagate = new List<Fact>();
+            foreach (var keyedFact in keyedFacts)
             {
-                throw new ArgumentNullException(nameof(key));
+                var key = keyedFact.Key;
+                var factWrapper = _workingMemory.GetFact(keyedFact.Value);
+                if (factWrapper == null)
+                {
+                    throw new ArgumentException($"Linked fact does not exist. Key={key}");
+                }
+                factWrapper.Source = new LinkedFactSource(activation);
+                toRemove.Add(System.Tuple.Create(key, factWrapper));
+                toPropagate.Add(factWrapper);
             }
-            if (fact == null)
+            foreach (var item in toRemove)
             {
-                throw new ArgumentNullException(nameof(fact));
+                _workingMemory.RemoveLinkedFact(activation, item.Item1, item.Item2);
+                item.Item2.Source = null;
             }
-            var factWrapper = _workingMemory.GetFact(fact);
-            if (factWrapper == null)
+
+            LinkedFactSet current;
+            if (_linkedFacts.Count == 0 || (current = _linkedFacts.Peek()).Action != LinkedFactAction.Retract)
             {
-                throw new ArgumentException($"Linked fact does not exist. Key={key}", nameof(fact));
+                current = new LinkedFactSet(LinkedFactAction.Retract);
+                _linkedFacts.Enqueue(current);
             }
-            _network.PropagateRetract(_executionContext, new List<Fact> {factWrapper});
-            _workingMemory.RemoveLinkedFact(activation, key, factWrapper);
-            factWrapper.Source = null;
+            current.Facts.AddRange(toPropagate);
         }
 
-        public int Fire()
+        public void QueueRetractLinked(Activation activation)
         {
-            return Fire(Int32.MaxValue);
+            var linkedKeys = GetLinkedKeys(activation);
+            var keyedFacts = new List<KeyValuePair<object, object>>();
+            foreach (var key in linkedKeys)
+            {
+                var linkedFact = GetLinked(activation, key);
+                keyedFacts.Add(new KeyValuePair<object, object>(key, linkedFact));
+            }
+            QueueRetractLinked(activation, keyedFacts);
         }
 
-        public int Fire(int maxRulesNumber)
+        public int Fire(CancellationToken cancellationToken = default)
+        {
+            return Fire(Int32.MaxValue, cancellationToken);
+        }
+
+        public int Fire(int maxRulesNumber, CancellationToken cancellationToken = default)
         {
             int ruleFiredCount = 0;
-            while (!_agenda.IsEmpty() && ruleFiredCount < maxRulesNumber)
+            while (!_agenda.IsEmpty && ruleFiredCount < maxRulesNumber)
             {
                 Activation activation = _agenda.Pop();
-                IActionContext actionContext = new ActionContext(this, activation);
+                IActionContext actionContext = new ActionContext(this, activation, cancellationToken);
 
-                _actionExecutor.Execute(_executionContext, actionContext);
+                try
+                {
+                    _actionExecutor.Execute(_executionContext, actionContext);
+                }
+                finally
+                {
+				    ruleFiredCount++;
+					if (AutoPropagateLinkedFacts) PropagateLinked();
+                }
 
-                ruleFiredCount++;
-                if (actionContext.IsHalted) break;
+                if (actionContext.IsHalted || cancellationToken.IsCancellationRequested) break;
             }
             return ruleFiredCount;
         }

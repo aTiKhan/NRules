@@ -1,32 +1,26 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq.Expressions;
 
 namespace NRules.RuleModel
 {
     /// <summary>
-    /// Rule element that represents a binding of a calculated expression to a declaration.
+    /// Rule element that represents results of an expression.
     /// </summary>
-    public class BindingElement : PatternSourceElement
+    public class BindingElement : ExpressionElement
     {
-        private readonly List<Declaration> _references;
-
-        internal BindingElement(Type resultType, IEnumerable<Declaration> declarations, IEnumerable<Declaration> references, LambdaExpression expression) 
-            : base(declarations, resultType)
+        internal BindingElement(Type resultType, LambdaExpression expression) 
+            : base(expression)
         {
-            Expression = expression;
-            _references = new List<Declaration>(references);
+            ResultType = resultType;
         }
+
+        /// <inheritdoc cref="RuleElement.ElementType"/>
+        public override ElementType ElementType => ElementType.Binding;
         
         /// <summary>
-        /// Binding expression.
+        /// Type of the result that this rule element yields.
         /// </summary>
-        public LambdaExpression Expression { get; }
-
-        /// <summary>
-        /// List of declarations the binding expression references.
-        /// </summary>
-        public IEnumerable<Declaration> References => _references;
+        public Type ResultType { get; }
 
         internal override void Accept<TContext>(TContext context, RuleElementVisitor<TContext> visitor)
         {

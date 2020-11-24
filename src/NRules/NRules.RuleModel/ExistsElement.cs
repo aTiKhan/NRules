@@ -1,21 +1,23 @@
-using System.Collections.Generic;
-
 namespace NRules.RuleModel
 {
     /// <summary>
     /// Existential quantifier.
     /// </summary>
-    public class ExistsElement : RuleLeftElement
+    public class ExistsElement : RuleElement
     {
+        /// <inheritdoc cref="RuleElement.ElementType"/>
+        public override ElementType ElementType => ElementType.Exists;
+
         /// <summary>
         /// Fact source of the existential element.
         /// </summary>
-        public RuleLeftElement Source { get; }
+        public RuleElement Source { get; }
 
-        internal ExistsElement(IEnumerable<Declaration> declarations, RuleLeftElement source)
-            : base(declarations)
+        internal ExistsElement(RuleElement source)
         {
             Source = source;
+
+            AddImports(source);
         }
 
         internal override void Accept<TContext>(TContext context, RuleElementVisitor<TContext> visitor)

@@ -1,8 +1,5 @@
-﻿using System;
-using System.Linq.Expressions;
-using NRules.Rete;
+﻿using NRules.Rete;
 using NRules.RuleModel;
-using NRules.Utilities;
 
 namespace NRules.Aggregators
 {
@@ -12,78 +9,35 @@ namespace NRules.Aggregators
     public interface IAggregateExpression
     {
         /// <summary>
+        /// Name of the aggregate expression.
+        /// </summary>
+        string Name { get; }
+
+        /// <summary>
         /// Invokes the expression with the given inputs.
         /// </summary>
+        /// <param name="context">Aggregation context.</param>
         /// <param name="tuple">Partial match up to the aggregate element.</param>
         /// <param name="fact">Fact being processed by the aggregate element.</param>
         /// <returns>Result of the expression.</returns>
-        object Invoke(ITuple tuple, IFact fact);
-    }
-
-    internal class AggregateFactExpression : IAggregateExpression
-    {
-        private readonly LambdaExpression _expression;
-        private readonly FastDelegate<Func<object, object>> _compiledExpression;
-
-        public AggregateFactExpression(LambdaExpression expression, FastDelegate<Func<object, object>> compiledExpression)
-        {
-            _expression = expression;
-            _compiledExpression = compiledExpression;
-        }
-
-        public object Invoke(ITuple tuple, IFact fact)
-        {
-            try
-            {
-                var factValue = fact.Value;
-                var result = _compiledExpression.Delegate(factValue);
-                return result;
-            }
-            catch (Exception e)
-            {
-                throw new AggregateExpressionException(e, _expression, tuple, fact);
-            }
-        }
+        object Invoke(AggregationContext context, ITuple tuple, IFact fact);
     }
 
     internal class AggregateExpression : IAggregateExpression
     {
-        private readonly LambdaExpression _expression;
-        private readonly IndexMap _factMap;
-        private readonly FastDelegate<Func<object[], object>> _compiledExpression;
+        private readonly ILhsExpression<object> _compiledExpression;
 
-        public AggregateExpression(LambdaExpression expression, FastDelegate<Func<object[], object>> compiledExpression, IndexMap factMap)
+        public AggregateExpression(string name, ILhsExpression<object> compiledExpression)
         {
-            _expression = expression;
-            _factMap = factMap;
             _compiledExpression = compiledExpression;
+            Name = name;
         }
 
-        public object Invoke(ITuple tuple, IFact fact)
-        {
-            var args = new object[_compiledExpression.ArrayArgumentCount];
-            int index = tuple.Count - 1;
-            foreach (var tupleFact in tuple.Facts)
-            {
-                IndexMap.SetElementAt(args, _factMap[index], tupleFact.Value);
-                index--;
-            }
-            IndexMap.SetElementAt(args, _factMap[tuple.Count], fact.Value);
+        public string Name { get; }
 
-            try
-            {
-                var result = _compiledExpression.Delegate(args);
-                return result;
-            }
-            catch (Exception e)
-            {
-                throw new AggregateExpressionException(e, _expression, tuple, fact);
-            }
-        }
-
-        public override string ToString()
+        public object Invoke(AggregationContext context, ITuple tuple, IFact fact)
         {
-            return _expression.ToString();
+            return _compiledExpression.Invoke(context.ExecutionContext, context.NodeInfo, tuple as Tuple, fact as Fact);
         }
     }
 }

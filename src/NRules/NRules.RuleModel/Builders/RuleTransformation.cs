@@ -33,8 +33,8 @@ namespace NRules.RuleModel.Builders
 
             if (lhsContext.IsModified || rhsContext.IsModified)
             {
-                var transformedRule = new RuleDefinition(rule.Name, rule.Description, rule.Priority, 
-                    rule.Repeatability, rule.Tags, rule.Properties, rule.DependencyGroup, rule.FilterGroup, lhs, rhs);
+                var transformedRule = Element.RuleDefinition(rule.Name, rule.Description, rule.Priority,
+                    rule.Repeatability, rule.Tags, rule.Properties, rule.DependencyGroup, lhs, rule.FilterGroup, rhs);
                 return transformedRule;
             }
             return rule;
@@ -63,11 +63,10 @@ namespace NRules.RuleModel.Builders
 
         protected internal override void VisitPattern(Context context, PatternElement element)
         {
-            var conditions = element.Conditions.Select(x => Transform<ConditionElement>(context, x)).ToList();
-            var source = Transform<PatternSourceElement>(context, element.Source);
+            var source = Transform<RuleElement>(context, element.Source);
             if (context.IsModified)
             {
-                var newElement = new PatternElement(element.Declaration, element.Declarations, conditions, source);
+                var newElement = Element.Pattern(element.Declaration, element.Expressions, source);
                 Result(context, newElement);
             }
         }
@@ -81,8 +80,7 @@ namespace NRules.RuleModel.Builders
             var source = Transform<PatternElement>(context, element.Source);
             if (context.IsModified)
             {
-                var newElement = new AggregateElement(element.Declarations, 
-                    element.ResultType, element.Name, element.ExpressionMap, source, element.CustomFactoryType);
+                var newElement = Element.Aggregate(element.ResultType, element.Name, element.Expressions, source, element.CustomFactoryType);
                 Result(context, newElement);
             }
         }
@@ -92,7 +90,7 @@ namespace NRules.RuleModel.Builders
             var actions = element.Actions.Select(x => Transform<ActionElement>(context, x)).ToList();
             if (context.IsModified)
             {
-                var newElement = new ActionGroupElement(element.Declarations, actions);
+                var newElement = Element.ActionGroup(actions);
                 Result(context, newElement);
             }
         }
@@ -107,44 +105,44 @@ namespace NRules.RuleModel.Builders
 
         protected internal override void VisitAnd(Context context, AndElement element)
         {
-            var childElements = element.ChildElements.Select(x => Transform<RuleLeftElement>(context, x)).ToList();
+            var childElements = element.ChildElements.Select(x => Transform<RuleElement>(context, x)).ToList();
             if (CollapseSingleGroup(context, childElements)) return;
             if (SplitOrGroup(context, element, childElements)) return;
             if (context.IsModified)
             {
-                var newElement = new AndElement(element.Declarations, childElements);
+                var newElement = Element.AndGroup(childElements);
                 Result(context, newElement);
             }
         }
 
         protected internal override void VisitOr(Context context, OrElement element)
         {
-            var childElements = element.ChildElements.Select(x => Transform<RuleLeftElement>(context, x)).ToList();
+            var childElements = element.ChildElements.Select(x => Transform<RuleElement>(context, x)).ToList();
             if (CollapseSingleGroup(context, childElements)) return;
             if (MergeOrGroups(context, element, childElements)) return;
             if (context.IsModified)
             {
-                var newElement = new OrElement(element.Declarations, childElements);
+                var newElement = Element.OrGroup(childElements);
                 Result(context, newElement);
             }
         }
 
         protected internal override void VisitNot(Context context, NotElement element)
         {
-            var source = Transform<RuleLeftElement>(context, element.Source);
+            var source = Transform<RuleElement>(context, element.Source);
             if (context.IsModified)
             {
-                var newElement = new NotElement(element.Declarations, source);
+                var newElement = Element.Not(source);
                 Result(context, newElement);
             }
         }
 
         protected internal override void VisitExists(Context context, ExistsElement element)
         {
-            var source = Transform<RuleLeftElement>(context, element.Source);
+            var source = Transform<RuleElement>(context, element.Source);
             if (context.IsModified)
             {
-                var newElement = new ExistsElement(element.Declarations, source);
+                var newElement = Element.Exists(source);
                 Result(context, newElement);
             }
         }
@@ -155,44 +153,37 @@ namespace NRules.RuleModel.Builders
             var patterns = element.Patterns.Select(x => Transform<PatternElement>(context, x)).ToList();
 
             //forall -> not(base and not(patterns))
-            var symbolTable = new SymbolTable(element.Declarations);
 
-            var notBuilder = new NotBuilder(symbolTable);
-            var groupBuilder = notBuilder.Group(GroupType.And);
+            Declaration baseDeclaration = basePattern.Declaration;
+            var baseParameter = baseDeclaration.ToParameterExpression();
 
-            Declaration declaration = basePattern.Declaration;
-            var basePatternBuilder = groupBuilder.Pattern(declaration);
-            foreach (var condition in basePattern.Conditions)
-            {
-                basePatternBuilder.Condition(condition.Expression);
-            }
-
-            var baseParameter = basePatternBuilder.Declaration.ToParameterExpression();
-
+            var negatedPatterns = new List<RuleElement>();
             foreach (var pattern in patterns)
             {
-                var patternBuilder = groupBuilder
-                    .Not()
-                    .Pattern(pattern.Declaration);
+                var parameter = pattern.Declaration.ToParameterExpression();
 
-                var parameter = patternBuilder.Declaration.ToParameterExpression();
-                //Join is required to correlate negated patterns with the base pattern
-                patternBuilder.Condition(
-                    Expression.Lambda(
-                        Expression.ReferenceEqual(baseParameter, parameter),
-                        baseParameter, parameter));
-
-                foreach (var condition in pattern.Conditions)
+                var expressions = new List<NamedExpressionElement>
                 {
-                    patternBuilder.Condition(condition.Expression);
-                }
+                    Element.Condition(
+                        Expression.Lambda(
+                            Expression.ReferenceEqual(baseParameter, parameter),
+                            baseParameter, parameter))
+                };
+                expressions.AddRange(pattern.Expressions);
+
+                negatedPatterns.Add(
+                    Element.Not(
+                        Element.Pattern(pattern.Declaration, expressions, pattern.Source)
+                    ));
             }
 
-            IBuilder<NotElement> builder = notBuilder;
-            Result(context, builder.Build());
+            var result = Element.Not(
+                Element.AndGroup(
+                    new RuleElement[] { basePattern }.Concat(negatedPatterns)));
+            Result(context, result);
         }
 
-        private bool CollapseSingleGroup(Context context, IList<RuleLeftElement> childElements)
+        private bool CollapseSingleGroup(Context context, IList<RuleElement> childElements)
         {
             if (childElements.Count == 1 &&
                 childElements.Single() is GroupElement)
@@ -203,24 +194,24 @@ namespace NRules.RuleModel.Builders
             return false;
         }
 
-        private bool SplitOrGroup(Context context, AndElement element, IList<RuleLeftElement> childElements)
+        private bool SplitOrGroup(Context context, AndElement element, IList<RuleElement> childElements)
         {
             if (!childElements.OfType<OrElement>().Any()) return false;
 
-            var groups = new List<IList<RuleLeftElement>>();
-            groups.Add(new List<RuleLeftElement>());
+            var groups = new List<IList<RuleElement>>();
+            groups.Add(new List<RuleElement>());
             ExpandOrElements(groups, childElements, 0);
 
-            var andElements = groups.Select(x => new AndElement(element.Declarations, x)).ToList();
-            var orElement = new OrElement(element.Declarations, andElements);
+            var andElements = groups.Select(Element.AndGroup).ToList();
+            var orElement = Element.OrGroup(andElements);
             Result(context, orElement);
             return true;
         }
 
-        private bool MergeOrGroups(Context context, OrElement element, IList<RuleLeftElement> childElements)
+        private bool MergeOrGroups(Context context, OrElement element, IList<RuleElement> childElements)
         {
             if (!childElements.OfType<OrElement>().Any()) return false;
-            var newChildElements = new List<RuleLeftElement>();
+            var newChildElements = new List<RuleElement>();
             foreach (var childElement in childElements)
             {
                 if (childElement is OrElement childOrElement)
@@ -233,12 +224,12 @@ namespace NRules.RuleModel.Builders
                 }
 
             }
-            var orElement = new OrElement(element.Declarations, newChildElements);
+            var orElement = Element.OrGroup(newChildElements);
             Result(context, orElement);
             return true;
         }
 
-        private void ExpandOrElements(IList<IList<RuleLeftElement>> groups, IList<RuleLeftElement> childElements, int index)
+        private void ExpandOrElements(IList<IList<RuleElement>> groups, IList<RuleElement> childElements, int index)
         {
             if (index == childElements.Count) return;
 
@@ -256,7 +247,7 @@ namespace NRules.RuleModel.Builders
                     var restChildren = orElementChildren.Skip(1).ToList();
                     for (int j = 0; j < restChildren.Count; j++)
                     {
-                        groups.Add(new List<RuleLeftElement>(groups[i]));
+                        groups.Add(new List<RuleElement>(groups[i]));
                         groups[offset + j].Add(restChildren[j]);
                     }
                     groups[i].Add(firstChild);

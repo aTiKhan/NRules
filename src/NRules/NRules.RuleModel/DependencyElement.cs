@@ -1,19 +1,22 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace NRules.RuleModel
 {
     /// <summary>
-    /// Dependency that the rule uses when its actions runs.
+    /// Dependency that the rule uses when its actions run.
     /// </summary>
     public class DependencyElement : RuleElement
     {
-        internal DependencyElement(Declaration declaration, IEnumerable<Declaration> declarations, Type serviceType)
-            : base(declarations)
+        internal DependencyElement(Declaration declaration, Type serviceType)
         {
             Declaration = declaration;
             ServiceType = serviceType;
+
+            AddExport(declaration);
         }
+
+        /// <inheritdoc cref="RuleElement.ElementType"/>
+        public override ElementType ElementType => ElementType.Dependency;
 
         /// <summary>
         /// Declaration that references the dependency.

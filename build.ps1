@@ -3,7 +3,7 @@ param (
     [string]$component = 'Core'
 )
 
-$version = '0.9.0'
+$version = '0.9.1'
 $configuration = 'Release'
 
 if (Test-Path Env:CI) { $version = $Env:APPVEYOR_BUILD_VERSION }
@@ -20,7 +20,7 @@ $components = @{
         }
         test = @{
             location = 'Tests'
-            frameworks = @('net462', 'netcoreapp1.0', 'netcoreapp2.0')
+            frameworks = @('net472', 'netcoreapp2.0')
         }
         bin = @{
             frameworks = @('net45', 'netstandard1.0', 'netstandard2.0')
@@ -136,17 +136,24 @@ $components = @{
             tool = 'dotnet'
         }
         bin = @{
-            frameworks = @('net462')
-            'net462' = @{
+            frameworks = @('net472', 'netcoreapp2.0')
+            'net472' = @{
                 include = @(
-                    "NRules.Benchmark\bin\$configuration\net462"
+                    "NRules.Benchmark\bin\$configuration\net472"
+                )
+            }
+            'netcoreapp2.0' = @{
+                include = @(
+                    "NRules.Benchmark\bin\$configuration\netcoreapp2.0"
                 )
             }
         }
-        run = @{
-            exe = @('net462\NRules.Benchmark.exe')
+        bench = @{
+            frameworks = @('net472')
+            exe = 'NRules.Benchmark.exe'
+            categories = @('Micro')
         }
-   };
+    };
     'Documentation' = @{
         name = 'Documentation'
         src_root = 'doc'

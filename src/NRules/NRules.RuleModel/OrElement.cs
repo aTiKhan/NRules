@@ -7,10 +7,13 @@ namespace NRules.RuleModel
     /// </summary>
     public class OrElement : GroupElement
     {
-        internal OrElement(IEnumerable<Declaration> declarations, IEnumerable<RuleLeftElement> childElements)
-            : base(declarations, childElements)
+        internal OrElement(IEnumerable<RuleElement> childElements)
+            : base(childElements)
         {
         }
+
+        /// <inheritdoc cref="RuleElement.ElementType"/>
+        public override ElementType ElementType => ElementType.Or;
 
         internal override void Accept<TContext>(TContext context, RuleElementVisitor<TContext> visitor)
         {

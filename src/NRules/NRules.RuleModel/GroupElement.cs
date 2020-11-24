@@ -3,21 +3,23 @@
 namespace NRules.RuleModel
 {
     /// <summary>
-    /// Grouping element that logically combines the patterns.
+    /// Grouping element that logically combines the patterns or other grouping elements.
     /// </summary>
-    public abstract class GroupElement : RuleLeftElement
+    public abstract class GroupElement : RuleElement
     {
-        private readonly List<RuleLeftElement> _childElements;
+        private readonly List<RuleElement> _childElements;
 
-        internal GroupElement(IEnumerable<Declaration> declarations, IEnumerable<RuleLeftElement> childElements)
-            : base(declarations)
+        internal GroupElement(IEnumerable<RuleElement> childElements)
         {
-            _childElements = new List<RuleLeftElement>(childElements);
+            _childElements = new List<RuleElement>(childElements);
+
+            AddExports(_childElements);
+            AddImports(_childElements);
         }
 
         /// <summary>
         /// List of child elements in the grouping.
         /// </summary>
-        public IEnumerable<RuleLeftElement> ChildElements => _childElements;
+        public IEnumerable<RuleElement> ChildElements => _childElements;
     }
 }

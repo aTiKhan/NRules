@@ -26,12 +26,12 @@ namespace NRules.IntegrationTests
         public void Fire_TwoGroupsOfMatchingFacts_FiresTwiceWithFirstValidFactInEachGroup()
         {
             //Arrange
-            var fact1 = new FactType {GroupProperty = "1", TestProperty = "Valid Value 1"};
-            var fact2 = new FactType {GroupProperty = "1", TestProperty = "Valid Value 2"};
-            var fact3 = new FactType {GroupProperty = "2", TestProperty = "Invalid Value 3"};
-            var fact4 = new FactType {GroupProperty = "2", TestProperty = "Valid Value 4"};
+            var fact1 = new FactType { GroupProperty = "1", TestProperty = "Valid Value 1" };
+            var fact2 = new FactType { GroupProperty = "1", TestProperty = "Valid Value 2" };
+            var fact3 = new FactType { GroupProperty = "2", TestProperty = "Invalid Value 3" };
+            var fact4 = new FactType { GroupProperty = "2", TestProperty = "Valid Value 4" };
 
-            var facts = new[] {fact1, fact2, fact3, fact4};
+            var facts = new[] { fact1, fact2, fact3, fact4 };
             Session.InsertAll(facts);
 
             //Act
@@ -47,11 +47,11 @@ namespace NRules.IntegrationTests
         public void Fire_OneGroupsOfMatchingFactsThenFirstFactRetracted_FiresOnceWithSecondFact()
         {
             //Arrange
-            var fact1 = new FactType {GroupProperty = "1", TestProperty = "Valid Value 1"};
-            var fact2 = new FactType {GroupProperty = "1", TestProperty = "Valid Value 2"};
-            var fact3 = new FactType {GroupProperty = "1", TestProperty = "Valid Value 3"};
+            var fact1 = new FactType { GroupProperty = "1", TestProperty = "Valid Value 1" };
+            var fact2 = new FactType { GroupProperty = "1", TestProperty = "Valid Value 2" };
+            var fact3 = new FactType { GroupProperty = "1", TestProperty = "Valid Value 3" };
 
-            var facts = new[] {fact1, fact2, fact3};
+            var facts = new[] { fact1, fact2, fact3 };
             Session.InsertAll(facts);
             Session.Retract(fact1);
 
@@ -95,8 +95,8 @@ namespace NRules.IntegrationTests
     {
         public static IQuery<TSource> First<TSource>(this IQuery<IEnumerable<TSource>> source)
         {
-            var expressionMap = new Dictionary<string, LambdaExpression>();
-            source.Builder.Aggregate<IEnumerable<TSource>, TSource>("First", expressionMap, typeof(CustomFirstAggregatorFactory));
+            var expressions = new List<KeyValuePair<string, LambdaExpression>>();
+            source.Builder.Aggregate<IEnumerable<TSource>, TSource>("First", expressions, typeof(CustomFirstAggregatorFactory));
             return new QueryExpression<TSource>(source.Builder);
         }
     }
@@ -105,7 +105,7 @@ namespace NRules.IntegrationTests
     {
         private Func<IAggregator> _factory;
 
-        public void Compile(AggregateElement element, IDictionary<string, IAggregateExpression> compiledExpressions)
+        public void Compile(AggregateElement element, IEnumerable<IAggregateExpression> compiledExpressions)
         {
             var elementType = element.ResultType;
             var aggregatorType = typeof(CustomFirstAggregator<>).MakeGenericType(elementType);
@@ -123,7 +123,7 @@ namespace NRules.IntegrationTests
     {
         private readonly Dictionary<object, TElement> _firstElements = new Dictionary<object, TElement>();
 
-        public IEnumerable<AggregationResult> Add(ITuple tuple, IEnumerable<IFact> facts)
+        public IEnumerable<AggregationResult> Add(AggregationContext context, ITuple tuple, IEnumerable<IFact> facts)
         {
             var results = new List<AggregationResult>();
             foreach (var fact in facts)
@@ -139,7 +139,7 @@ namespace NRules.IntegrationTests
             return results;
         }
 
-        public IEnumerable<AggregationResult> Modify(ITuple tuple, IEnumerable<IFact> facts)
+        public IEnumerable<AggregationResult> Modify(AggregationContext context, ITuple tuple, IEnumerable<IFact> facts)
         {
             var results = new List<AggregationResult>();
             foreach (var fact in facts)
@@ -170,7 +170,7 @@ namespace NRules.IntegrationTests
             return results;
         }
 
-        public IEnumerable<AggregationResult> Remove(ITuple tuple, IEnumerable<IFact> facts)
+        public IEnumerable<AggregationResult> Remove(AggregationContext context, ITuple tuple, IEnumerable<IFact> facts)
         {
             var results = new List<AggregationResult>();
             foreach (var fact in facts)

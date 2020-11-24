@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using NRules.Extensibility;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
 using NRules.RuleModel;
@@ -19,13 +20,13 @@ namespace NRules.IntegrationTests
 
             Expression expression = null;
             IList<IFact> facts = null; 
-            Session.Events.ConditionFailedEvent += (sender, args) => expression = args.Condition;
-            Session.Events.ConditionFailedEvent += (sender, args) => facts = args.Facts.ToList();
+            Session.Events.LhsExpressionFailedEvent += (sender, args) => expression = args.Expression;
+            Session.Events.LhsExpressionFailedEvent += (sender, args) => facts = args.Facts.ToList();
 
             var fact = new FactType {TestProperty = "Valid Value" };
 
             //Act - Assert
-            var ex = Assert.Throws<RuleConditionEvaluationException>(() => Session.Insert(fact));
+            var ex = Assert.Throws<RuleLhsExpressionEvaluationException>(() => Session.Insert(fact));
             Assert.NotNull(expression);
             Assert.Equal(1, facts.Count);
             Assert.Same(fact, facts.First().Value);
@@ -38,7 +39,7 @@ namespace NRules.IntegrationTests
             //Arrange
             GetRuleInstance<TestRule>().Condition = ThrowCondition;
 
-            Session.Events.ConditionFailedEvent += (sender, args) => args.IsHandled = true;
+            Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
             var fact = new FactType { TestProperty = "Valid Value" };
             Session.Insert(fact);
@@ -56,7 +57,7 @@ namespace NRules.IntegrationTests
             //Arrange
             GetRuleInstance<TestRule>().Condition = ThrowCondition;
 
-            Session.Events.ConditionFailedEvent += (sender, args) => args.IsHandled = true;
+            Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
             var fact = new FactType { TestProperty = "Valid Value" };
             Session.Insert(fact);
@@ -76,7 +77,7 @@ namespace NRules.IntegrationTests
         public void Fire_ConditionInsertThenFailedUpdate_DoesNotFire()
         {
             //Arrange
-            Session.Events.ConditionFailedEvent += (sender, args) => args.IsHandled = true;
+            Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
             var fact = new FactType { TestProperty = "Valid Value" };
             Session.Insert(fact);
@@ -98,7 +99,7 @@ namespace NRules.IntegrationTests
             //Arrange
             GetRuleInstance<TestRule>().Condition = ThrowCondition;
 
-            Session.Events.ConditionFailedEvent += (sender, args) => args.IsHandled = true;
+            Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
             var fact = new FactType { TestProperty = "Valid Value" };
             Session.Insert(fact);
@@ -120,7 +121,7 @@ namespace NRules.IntegrationTests
             //Arrange
             GetRuleInstance<TestRule>().Condition = ThrowCondition;
 
-            Session.Events.ConditionFailedEvent += (sender, args) => args.IsHandled = true;
+            Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
             var fact = new FactType { TestProperty = "Valid Value" };
             Session.Insert(fact);
@@ -145,8 +146,8 @@ namespace NRules.IntegrationTests
 
             Expression expression = null;
             IList<IFactMatch> facts = null;
-            Session.Events.AgendaFilterFailedEvent += (sender, args) => expression = args.Expression;
-            Session.Events.AgendaFilterFailedEvent += (sender, args) => facts = args.Facts.ToList();
+            Session.Events.AgendaExpressionFailedEvent += (sender, args) => expression = args.Expression;
+            Session.Events.AgendaExpressionFailedEvent += (sender, args) => facts = args.Facts.ToList();
 
             var fact = new FactType { TestProperty = "Valid Value" };
 
@@ -164,7 +165,7 @@ namespace NRules.IntegrationTests
             //Arrange
             GetRuleInstance<TestRule>().FilterCondition = ThrowFilter;
 
-            Session.Events.AgendaFilterFailedEvent += (sender, args) => args.IsHandled = true;
+            Session.Events.AgendaExpressionFailedEvent += (sender, args) => args.IsHandled = true;
             var fact = new FactType { TestProperty = "Valid Value" };
 
             //Act
@@ -183,14 +184,14 @@ namespace NRules.IntegrationTests
 
             Expression expression = null;
             IList<IFactMatch> facts = null;
-            Session.Events.ActionFailedEvent += (sender, args) => expression = args.Action;
-            Session.Events.ActionFailedEvent += (sender, args) => facts = args.Facts.ToList();
+            Session.Events.RhsExpressionFailedEvent += (sender, args) => expression = args.Expression;
+            Session.Events.RhsExpressionFailedEvent += (sender, args) => facts = args.Match.Facts.ToList();
 
             var fact = new FactType { TestProperty = "Valid Value" };
             Session.Insert(fact);
 
             //Act - Assert
-            var ex = Assert.Throws<RuleActionEvaluationException>(() => Session.Fire());
+            var ex = Assert.Throws<RuleRhsExpressionEvaluationException>(() => Session.Fire());
             Assert.NotNull(expression);
             Assert.Equal(1, facts.Count());
             Assert.Same(fact, facts.First().Value);
@@ -203,13 +204,32 @@ namespace NRules.IntegrationTests
             //Arrange
             GetRuleInstance<TestRule>().Action = ThrowAction;
 
-            Session.Events.ActionFailedEvent += (sender, args) => args.IsHandled = true;
+            Session.Events.RhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
             var fact = new FactType { TestProperty = "Valid Value" };
             Session.Insert(fact);
 
             //Act - Assert
             Session.Fire();
+        }
+
+        [Fact]
+        public void Fire_ActionErrorNoErrorHandlerWithInterceptor_ThrowsBareException()
+        {
+            //Arrange
+            Session.ActionInterceptor = new PassThroughActionInterceptor();
+            GetRuleInstance<TestRule>().Action = ThrowAction;
+
+            Expression expression = null;
+            IList<IFactMatch> facts = null;
+            Session.Events.RhsExpressionFailedEvent += (sender, args) => expression = args.Expression;
+            Session.Events.RhsExpressionFailedEvent += (sender, args) => facts = args.Match.Facts.ToList();
+
+            var fact = new FactType { TestProperty = "Valid Value" };
+            Session.Insert(fact);
+
+            //Act - Assert
+            Assert.Throws<InvalidOperationException>(() => Session.Fire());
         }
 
         protected override void SetUpRules()
@@ -247,6 +267,17 @@ namespace NRules.IntegrationTests
 
                 Then()
                     .Do(ctx => Action());
+            }
+        }
+
+        public class PassThroughActionInterceptor : IActionInterceptor
+        {
+            public void Intercept(IContext context, IEnumerable<IActionInvocation> actions)
+            {
+                foreach (var action in actions)
+                {
+                    action.Invoke();
+                }
             }
         }
     }

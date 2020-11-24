@@ -9,11 +9,15 @@ namespace NRules.RuleModel
     {
         private readonly List<DependencyElement> _dependencies;
 
-        internal DependencyGroupElement(IEnumerable<Declaration> declarations, IEnumerable<DependencyElement> dependencies)
-            : base(declarations)
+        internal DependencyGroupElement(IEnumerable<DependencyElement> dependencies)
         {
             _dependencies = new List<DependencyElement>(dependencies);
+
+            AddExports(_dependencies);
         }
+
+        /// <inheritdoc cref="RuleElement.ElementType"/>
+        public override ElementType ElementType => ElementType.DependencyGroup;
 
         /// <summary>
         /// List of dependencies the group element contains.

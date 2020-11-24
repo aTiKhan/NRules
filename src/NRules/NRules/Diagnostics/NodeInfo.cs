@@ -21,7 +21,6 @@ namespace NRules.Diagnostics
         Not,
         Binding,
         BetaMemory,
-        Terminal,
         Rule,
     }
 
@@ -47,7 +46,7 @@ namespace NRules.Diagnostics
         
         internal static NodeInfo Create(SelectionNode node)
         {
-            var conditions = new[] {node.Condition.ToString()};
+            var conditions = new[] {node.ExpressionElement.Expression.ToString()};
             return new NodeInfo(NodeType.Selection, string.Empty, conditions, Empty, Empty);
         }
 
@@ -59,7 +58,7 @@ namespace NRules.Diagnostics
 
         internal static NodeInfo Create(JoinNode node)
         {
-            var conditions = node.Conditions.Select(c => c.ToString());
+            var conditions = node.ExpressionElements.Select(c => c.Expression.ToString());
             return new NodeInfo(NodeType.Join, string.Empty, conditions, Empty, Empty);
         }
 
@@ -75,7 +74,7 @@ namespace NRules.Diagnostics
 
         internal static NodeInfo Create(AggregateNode node)
         {
-            var expressions = node.ExpressionMap.Select(e => $"{e.Name}={e.Expression.ToString()}");
+            var expressions = node.Expressions.Select(e => $"{e.Name}={e.Expression.ToString()}");
             return new NodeInfo(NodeType.Aggregate, node.Name, Empty, expressions, Empty);
         }
 
@@ -86,7 +85,7 @@ namespace NRules.Diagnostics
 
         internal static NodeInfo Create(BindingNode node)
         {
-            var expressions = new[] {node.BindingExpression.ToString()};
+            var expressions = new[] {node.ExpressionElement.Expression.ToString()};
             return new NodeInfo(NodeType.Binding, string.Empty, Empty, expressions, Empty);
         }
 
@@ -95,11 +94,6 @@ namespace NRules.Diagnostics
             var tuples = memory.Tuples.Select(
                 t => string.Join(" || ", t.OrderedFacts().Select(f => f.Value).ToArray()));
             return new NodeInfo(NodeType.BetaMemory, string.Empty, Empty, Empty, tuples);
-        }
-
-        internal static NodeInfo Create(TerminalNode node)
-        {
-            return new NodeInfo(NodeType.Terminal, string.Empty);
         }
 
         internal static NodeInfo Create(RuleNode node)

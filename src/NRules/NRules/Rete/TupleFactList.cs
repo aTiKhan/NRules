@@ -3,22 +3,8 @@ using System.Diagnostics;
 
 namespace NRules.Rete
 {
-    internal interface ITupleFactEnumerator
-    {
-        Tuple CurrentTuple { get; }
-        Fact CurrentFact { get; }
-        bool MoveNext();
-        void Reset();
-    }
-
-    internal interface ITupleFactList
-    {
-        ITupleFactEnumerator GetEnumerator();
-        int Count { get; }
-    }
-
     [DebuggerDisplay("TupleFactList ({Count})")]
-    internal class TupleFactList : ITupleFactList
+    internal class TupleFactList
     {
         private readonly List<Tuple> _tuples = new List<Tuple>(); 
         private readonly List<Fact> _facts = new List<Fact>();
@@ -31,12 +17,12 @@ namespace NRules.Rete
             _facts.Add(fact);
         }
 
-        private class TupleFactEnumerator : ITupleFactEnumerator
+        public struct Enumerator
         {
-            private readonly IEnumerator<Tuple> _tupleEnumerator;
-            private readonly IEnumerator<Fact> _factEnumerator;
+            private List<Tuple>.Enumerator _tupleEnumerator;
+            private List<Fact>.Enumerator _factEnumerator;
 
-            public TupleFactEnumerator(IEnumerator<Tuple> tupleEnumerator, IEnumerator<Fact> factEnumerator)
+            public Enumerator(List<Tuple>.Enumerator tupleEnumerator, List<Fact>.Enumerator factEnumerator)
             {
                 _tupleEnumerator = tupleEnumerator;
                 _factEnumerator = factEnumerator;
@@ -51,19 +37,13 @@ namespace NRules.Rete
                 bool hasNextFact = _factEnumerator.MoveNext();
                 return hasNextTuple && hasNextFact;
             }
-
-            public void Reset()
-            {
-                _tupleEnumerator.Reset();
-                _factEnumerator.Reset();
-            }
         }
 
-        public ITupleFactEnumerator GetEnumerator()
+        public Enumerator GetEnumerator()
         {
             var tupleEnumerator = _tuples.GetEnumerator();
             var factEnumerator = _facts.GetEnumerator();
-            return new TupleFactEnumerator(tupleEnumerator, factEnumerator);
+            return new Enumerator(tupleEnumerator, factEnumerator);
         }
     }
 }

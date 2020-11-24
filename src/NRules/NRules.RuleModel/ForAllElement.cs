@@ -5,16 +5,21 @@ namespace NRules.RuleModel
     /// <summary>
     /// Universal quantifier.
     /// </summary>
-    public class ForAllElement : RuleLeftElement
+    public class ForAllElement : RuleElement
     {
         private readonly List<PatternElement> _patterns;
 
-        internal ForAllElement(IEnumerable<Declaration> declarations, PatternElement source, IEnumerable<PatternElement> patterns)
-            : base(declarations)
+        internal ForAllElement(PatternElement source, IEnumerable<PatternElement> patterns)
         {
             BasePattern = source;
             _patterns = new List<PatternElement>(patterns);
+
+            AddImports(source);
+            AddImports(_patterns);
         }
+
+        /// <inheritdoc cref="RuleElement.ElementType"/>
+        public override ElementType ElementType => ElementType.ForAll;
 
         /// <summary>
         /// Base pattern that determines the universe of facts that the universal quantifier is applied to.

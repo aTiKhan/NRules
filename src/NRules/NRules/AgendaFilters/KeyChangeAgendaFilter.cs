@@ -6,25 +6,32 @@ namespace NRules.AgendaFilters
     internal class KeyChangeAgendaFilter : IAgendaFilter
     {
         private const string KeyName = "ChangeKeys";
-        private readonly List<IActivationExpression> _keySelectors;
+        private readonly List<IActivationExpression<object>> _keySelectors;
 
-        public KeyChangeAgendaFilter(IEnumerable<IActivationExpression> keySelectors)
+        public KeyChangeAgendaFilter(IEnumerable<IActivationExpression<object>> keySelectors)
         {
-            _keySelectors = new List<IActivationExpression>(keySelectors);
+            _keySelectors = new List<IActivationExpression<object>>(keySelectors);
         }
 
-        public bool Accept(Activation activation)
+        public bool Accept(AgendaContext context, Activation activation)
         {
-            var oldKeys = activation.GetState<List<object>>(KeyName);
-            var newKeys = _keySelectors.Select(selector => selector.Invoke(activation)).ToList();
+            var keys = activation.GetState<ChangeKeys>(KeyName);
+            if (keys == null)
+            {
+                keys = new ChangeKeys();
+                activation.SetState(KeyName, keys);
+                activation.OnRuleFiring += OnRuleFiring;
+            }
+
+            keys.New = _keySelectors.Select(selector => selector.Invoke(context, activation)).ToList();
             bool accept = true;
 
-            if (oldKeys != null)
+            if (keys.Current != null)
             {
                 accept = false;
-                for (int i = 0; i < oldKeys.Count; i++)
+                for (int i = 0; i < keys.Current.Count; i++)
                 {
-                    if (!Equals(oldKeys[i], newKeys[i]))
+                    if (!Equals(keys.Current[i], keys.New[i]))
                     {
                         accept = true;
                         break;
@@ -32,8 +39,22 @@ namespace NRules.AgendaFilters
                 }
             }
 
-            activation.SetState(KeyName, newKeys);
             return accept;
+        }
+
+        private void OnRuleFiring(object sender, ActivationEventArgs args)
+        {
+            var keys = args.Activation.GetState<ChangeKeys>(KeyName);
+            if (keys != null)
+            {
+                keys.Current = keys.New;
+            }
+        }
+
+        private class ChangeKeys
+        {
+            public List<object> Current { get; set; }
+            public List<object> New { get; set; }
         }
     }
 }
