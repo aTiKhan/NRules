@@ -16,9 +16,9 @@ Use the following resources to get up and running with NRules.
 
 - [Getting Started Guide](https://github.com/NRules/NRules/wiki/Getting-Started)
 - [Wiki Documentation](https://github.com/NRules/NRules/wiki)
-- [API Documentation](http://nrules.net/api/index.html)
-- [Discussion Group](http://groups.google.com/group/nrules-users)
-- [Stack Overflow](http://stackoverflow.com/questions/tagged/nrules)
+- [API Documentation](https://nrules.net/api/index.html)
+- [Discussions](https://github.com/NRules/NRules/discussions)
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/nrules)
 - [Gitter Chat](https://gitter.im/NRules/NRules)
 
 ## Contributing
@@ -26,4 +26,4 @@ Use the following resources to get up and running with NRules.
 See [Contributor Guide](CONTRIBUTING.md) for the guidelines on how to contribute to the project.
 
 ---
-Copyright &copy; 2012-2020 [Sergiy Nikolayev](https://github.com/snikolayev) under the [MIT license](LICENSE.txt).
+Copyright &copy; 2012-2021 [Sergiy Nikolayev](https://github.com/snikolayev) under the [MIT license](LICENSE.txt).

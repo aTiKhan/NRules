@@ -5,14 +5,16 @@ namespace NRules.Rete
 {
     internal abstract class BinaryBetaNode : BetaNode, IObjectSink
     {
-        private static readonly TupleFactSet[] EmptySetList = new TupleFactSet[0];
+        private readonly bool _isSubnetJoin;
+        private static readonly List<TupleFactSet> EmptySetList = new List<TupleFactSet>();
         private static readonly Dictionary<long, List<Fact>> EmptyGroups = new Dictionary<long, List<Fact>>();
 
         public ITupleSource LeftSource { get; }
         public IObjectSource RightSource { get; }
 
-        protected BinaryBetaNode(ITupleSource leftSource, IObjectSource rightSource)
+        protected BinaryBetaNode(ITupleSource leftSource, IObjectSource rightSource, bool isSubnetJoin)
         {
+            _isSubnetJoin = isSubnetJoin;
             LeftSource = leftSource;
             RightSource = rightSource;
 
@@ -28,24 +30,24 @@ namespace NRules.Rete
         {
             int level = tuple.Level;
             var facts = RightSource.GetFacts(context).ToList();
-            if (facts.Count > 0)
+            if (facts.Count > 0 && _isSubnetJoin)
             {
-                IDictionary<long, List<Fact>> factGroups = GroupFacts(facts, level);
+                var factGroups = GroupFacts(facts, level);
                 if (factGroups.Count > 0)
                     return JoinByGroupId(tuple, factGroups);
             }
             return new TupleFactSet(tuple, facts);
         }
 
-        protected IEnumerable<TupleFactSet> JoinedSets(IExecutionContext context, List<Tuple> tuples)
+        protected List<TupleFactSet> JoinedSets(IExecutionContext context, List<Tuple> tuples)
         {
             if (tuples.Count == 0) return EmptySetList;
-            int level = tuples[0].Level;
 
             var facts = RightSource.GetFacts(context).ToList();
-            if (facts.Count > 0)
+            if (facts.Count > 0 && _isSubnetJoin)
             {
-                IDictionary<long, List<Fact>> factGroups = GroupFacts(facts, level);
+                int level = tuples[0].Level;
+                var factGroups = GroupFacts(facts, level);
                 if (factGroups.Count > 0)
                     return JoinByGroupId(tuples, factGroups);
             }
@@ -57,16 +59,19 @@ namespace NRules.Rete
         {
             var tuples = LeftSource.GetTuples(context).ToList();
             if (tuples.Count == 0) return EmptySetList;
-            int level = tuples[0].Level;
 
-            IDictionary<long, List<Fact>> factGroups = GroupFacts(facts, level);
-            if (factGroups.Count > 0)
-                return JoinByGroupId(tuples, factGroups);
-            
+            if (_isSubnetJoin)
+            {
+                int level = tuples[0].Level;
+                var factGroups = GroupFacts(facts, level);
+                if (factGroups.Count > 0)
+                    return JoinByGroupId(tuples, factGroups);
+            }
+
             return CrossJoin(tuples, facts);
         }
 
-        private IEnumerable<TupleFactSet> JoinByGroupId(IEnumerable<Tuple> tuples, IDictionary<long, List<Fact>> factGroups)
+        private List<TupleFactSet> JoinByGroupId(IEnumerable<Tuple> tuples, Dictionary<long, List<Fact>> factGroups)
         {
             var sets = new List<TupleFactSet>();
             foreach (var tuple in tuples)
@@ -85,9 +90,9 @@ namespace NRules.Rete
             return tupleFactSet;
         }
 
-        private IEnumerable<TupleFactSet> CrossJoin(IList<Tuple> tuples, List<Fact> facts)
+        private List<TupleFactSet> CrossJoin(List<Tuple> tuples, List<Fact> facts)
         {
-            var sets = new List<TupleFactSet>();
+            var sets = new List<TupleFactSet>(tuples.Count);
             foreach (var tuple in tuples)
             {
                 sets.Add(new TupleFactSet(tuple, facts));
@@ -95,7 +100,7 @@ namespace NRules.Rete
             return sets;
         }
 
-        private IDictionary<long, List<Fact>> GroupFacts(List<Fact> facts, int level)
+        private Dictionary<long, List<Fact>> GroupFacts(List<Fact> facts, int level)
         {
             if (facts.Count == 0 || !facts[0].IsWrapperFact) return EmptyGroups;
 

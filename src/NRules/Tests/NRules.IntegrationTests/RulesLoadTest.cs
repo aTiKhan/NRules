@@ -18,11 +18,11 @@ namespace NRules.IntegrationTests
             RuleRepository target = CreateTarget();
 
             //Act
-            target.Load(x => x.From(typeof(string).GetTypeInfo().Assembly));
+            target.Load(x => x.From(typeof(string).Assembly));
             IRuleSet ruleSet = target.GetRuleSets().First();
 
             //Assert
-            Assert.Equal(0, ruleSet.Rules.Count());
+            Assert.Empty(ruleSet.Rules);
         }
 
         [Fact]
@@ -36,7 +36,7 @@ namespace NRules.IntegrationTests
             IRuleSet ruleSet = target.GetRuleSets().First();
 
             //Assert
-            Assert.Equal(0, ruleSet.Rules.Count());
+            Assert.Empty(ruleSet.Rules);
         }
 
         [Fact]
@@ -121,7 +121,7 @@ namespace NRules.IntegrationTests
             IRuleSet ruleSet = target.GetRuleSets().First();
 
             //Assert
-            Assert.Equal(1, ruleSet.Rules.Count());
+            Assert.Single(ruleSet.Rules);
             Assert.Equal(typeof(ValidRule).FullName, ruleSet.Rules.First().Name);
         }
 
@@ -139,7 +139,7 @@ namespace NRules.IntegrationTests
             IRuleSet ruleSet = target.GetRuleSets().First();
 
             //Assert
-            Assert.Equal(1, ruleSet.Rules.Count());
+            Assert.Single(ruleSet.Rules);
             Assert.Equal("Rule with metadata", ruleSet.Rules.First().Name);
         }
 
@@ -161,11 +161,11 @@ namespace NRules.IntegrationTests
             target.Add(ruleSet);
 
             //Assert
-            Assert.Equal(1, ruleSet.Rules.Count());
+            Assert.Single(ruleSet.Rules);
             Assert.Equal(typeof(ValidRule).FullName, ruleSet.Rules.First().Name);
         }
 
-        private Assembly ThisAssembly => GetType().GetTypeInfo().Assembly;
+        private Assembly ThisAssembly => GetType().Assembly;
 
         public RuleRepository CreateTarget()
         {

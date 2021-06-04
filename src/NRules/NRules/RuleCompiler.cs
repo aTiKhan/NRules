@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using NRules.AgendaFilters;
 using NRules.Aggregators;
+using NRules.Extensibility;
 using NRules.Rete;
 using NRules.RuleModel;
 using NRules.RuleModel.Builders;
@@ -17,6 +18,7 @@ namespace NRules
     public class RuleCompiler
     {
         private readonly AggregatorRegistry _aggregatorRegistry = new AggregatorRegistry();
+        private readonly IRuleExpressionCompiler _ruleExpressionCompiler = new RuleExpressionCompiler();
 
         /// <summary>
         /// Registry of custom aggregator factories.
@@ -24,16 +26,42 @@ namespace NRules
         public AggregatorRegistry AggregatorRegistry => _aggregatorRegistry;
 
         /// <summary>
+        /// Compiles expressions used in rules conditions and actions into executable delegates.
+        /// Default implementation uses the built-in .NET expression compiler.
+        /// </summary>
+        public IExpressionCompiler ExpressionCompiler
+        {
+            get => _ruleExpressionCompiler.ExpressionCompiler;
+            set
+            {
+                if (value == null) throw new ArgumentNullException(nameof(ExpressionCompiler));
+                _ruleExpressionCompiler.ExpressionCompiler = value;
+            }
+        }
+
+        /// <summary>
         /// Compiles a collection of rules into a session factory.
         /// </summary>
         /// <param name="ruleDefinitions">Rules to compile.</param>
-        /// <param name="cancellationToken">Enables cooperative cancellation of the rules execution cycle.</param>
         /// <returns>Session factory.</returns>
         /// <exception cref="RuleCompilationException">Any fatal error during rules compilation.</exception>
         /// <seealso cref="IRuleRepository"/>
-        public ISessionFactory Compile(IEnumerable<IRuleDefinition> ruleDefinitions, CancellationToken cancellationToken = default)
+        public ISessionFactory Compile(IEnumerable<IRuleDefinition> ruleDefinitions)
         {
-            IReteBuilder reteBuilder = new ReteBuilder(_aggregatorRegistry);
+            return Compile(ruleDefinitions, default);
+        }
+
+        /// <summary>
+        /// Compiles a collection of rules into a session factory.
+        /// </summary>
+        /// <param name="ruleDefinitions">Rules to compile.</param>
+        /// <param name="cancellationToken">Enables cooperative cancellation of the rules compilation.</param>
+        /// <returns>Session factory.</returns>
+        /// <exception cref="RuleCompilationException">Any fatal error during rules compilation.</exception>
+        /// <seealso cref="IRuleRepository"/>
+        public ISessionFactory Compile(IEnumerable<IRuleDefinition> ruleDefinitions, CancellationToken cancellationToken)
+        {
+            IReteBuilder reteBuilder = new ReteBuilder(_aggregatorRegistry, _ruleExpressionCompiler);
             var compiledRules = new List<ICompiledRule>();
             foreach (var ruleDefinition in ruleDefinitions)
             {
@@ -59,9 +87,21 @@ namespace NRules
         /// Compiles rules from rule sets into a session factory.
         /// </summary>
         /// <param name="ruleSets">Rule sets to compile.</param>
-        /// <param name="cancellationToken">Enables cooperative cancellation of the rules execution cycle.</param>
         /// <returns>Session factory.</returns>
-        public ISessionFactory Compile(IEnumerable<IRuleSet> ruleSets, CancellationToken cancellationToken = default)
+        /// <exception cref="RuleCompilationException">Any fatal error during rules compilation.</exception>
+        public ISessionFactory Compile(IEnumerable<IRuleSet> ruleSets)
+        {
+            return Compile(ruleSets, default);
+        }
+
+        /// <summary>
+        /// Compiles rules from rule sets into a session factory.
+        /// </summary>
+        /// <param name="ruleSets">Rule sets to compile.</param>
+        /// <param name="cancellationToken">Enables cooperative cancellation of the rules compilation.</param>
+        /// <returns>Session factory.</returns>
+        /// <exception cref="RuleCompilationException">Any fatal error during rules compilation.</exception>
+        public ISessionFactory Compile(IEnumerable<IRuleSet> ruleSets, CancellationToken cancellationToken)
         {
             var rules = ruleSets.SelectMany(x => x.Rules);
             return Compile(rules, cancellationToken);
@@ -86,12 +126,13 @@ namespace NRules
                 var actions = new List<IRuleAction>();
                 foreach (var action in rightHandSide.Actions)
                 {
-                    var ruleAction = ExpressionCompiler.CompileAction(action, ruleDeclarations, dependencies, terminal.FactMap);
+                    var ruleAction = _ruleExpressionCompiler.CompileAction(action, ruleDeclarations, dependencies, terminal.FactMap);
                     actions.Add(ruleAction);
                 }
 
                 var rule = new CompiledRule(ruleDefinition, ruleDeclarations, actions, filter, terminal.FactMap);
-                BuildRuleNode(rule, terminal);
+                var ruleNode = BuildRuleNode(rule, terminal);
+                ruleNode.Id = reteBuilder.GetNodeId();
                 rules.Add(rule);
             }
 
@@ -107,11 +148,11 @@ namespace NRules
                 switch (filter.FilterType)
                 {
                     case FilterType.Predicate:
-                        var condition = ExpressionCompiler.CompileActivationExpression<bool>(filter, ruleDeclarations, tupleFactMap);
+                        var condition = _ruleExpressionCompiler.CompileActivationExpression<bool>(filter, ruleDeclarations, tupleFactMap);
                         conditions.Add(condition);
                         break;
                     case FilterType.KeyChange:
-                        var keySelector = ExpressionCompiler.CompileActivationExpression<object>(filter, ruleDeclarations, tupleFactMap);
+                        var keySelector = _ruleExpressionCompiler.CompileActivationExpression<object>(filter, ruleDeclarations, tupleFactMap);
                         keySelectors.Add(keySelector);
                         break;
                     default:
@@ -122,10 +163,12 @@ namespace NRules
             return compiledFilter;
         }
 
-        private void BuildRuleNode(ICompiledRule compiledRule, ITerminal terminal)
+        private RuleNode BuildRuleNode(ICompiledRule compiledRule, ITerminal terminal)
         {
             var ruleNode = new RuleNode(compiledRule);
+            ruleNode.NodeInfo.Add(compiledRule.Definition);
             terminal.Source.Attach(ruleNode);
+            return ruleNode;
         }
     }
 }

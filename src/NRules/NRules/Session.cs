@@ -41,7 +41,7 @@ namespace NRules
     /// This exception can also be observed as an event <see cref="IEventProvider.RhsExpressionFailedEvent"/>.</exception>
     /// <seealso cref="ISessionFactory"/>
     /// <threadsafety instance="false" />
-    public interface ISession
+    public interface ISession : ISessionSchemaProvider
     {
         /// <summary>
         /// Controls how the engine propagates linked facts from rules that insert/update/retract linked facts in their actions.
@@ -64,6 +64,11 @@ namespace NRules
         IEventProvider Events { get; }
 
         /// <summary>
+        /// Provider of session performance metrics for the current rule session.
+        /// </summary>
+        IMetricsProvider Metrics { get; }
+
+        /// <summary>
         /// Rules dependency resolver for the current rules session.
         /// </summary>
         IDependencyResolver DependencyResolver { get; set; }
@@ -77,7 +82,9 @@ namespace NRules
         /// <summary>
         /// Inserts new facts to the rules engine memory.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Facts to insert.</param>
         /// <exception cref="ArgumentException">If any fact already exists in working memory.</exception>
         void InsertAll(IEnumerable<object> facts);
@@ -86,7 +93,9 @@ namespace NRules
         /// Inserts new facts to the rules engine memory if the facts don't exist.
         /// If any of the facts exists in the engine, none of the facts are inserted.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Facts to insert.</param>
         /// <returns>Result of facts insertion.</returns>
         IFactResult TryInsertAll(IEnumerable<object> facts);
@@ -95,7 +104,9 @@ namespace NRules
         /// Inserts new facts to the rules engine memory if the facts don't exist.
         /// If any of the facts exists in the engine, the behavior is defined by <see cref="BatchOptions"/>.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Facts to insert.</param>
         /// <param name="options">Options that define behavior of the batch operation.</param>
         /// <returns>Result of facts insertion.</returns>
@@ -104,7 +115,9 @@ namespace NRules
         /// <summary>
         /// Inserts new fact to the rules engine memory.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="fact">Facts to insert.</param>
         /// <exception cref="ArgumentException">If fact already exists in working memory.</exception>
         void Insert(object fact);
@@ -112,6 +125,9 @@ namespace NRules
         /// <summary>
         /// Inserts a fact to the rules engine memory if the fact does not exist.
         /// </summary>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="fact">Fact to insert.</param>
         /// <returns>Whether the fact was inserted or not.</returns>
         bool TryInsert(object fact);
@@ -119,7 +135,9 @@ namespace NRules
         /// <summary>
         /// Updates existing facts in the rules engine memory.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Facts to update.</param>
         /// <exception cref="ArgumentException">If any fact does not exist in working memory.</exception>
         void UpdateAll(IEnumerable<object> facts);
@@ -128,7 +146,9 @@ namespace NRules
         /// Updates existing facts in the rules engine memory if the facts exist.
         /// If any of the facts don't exist in the engine, none of the facts are updated.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Facts to update.</param>
         /// <returns>Result of facts update.</returns>
         IFactResult TryUpdateAll(IEnumerable<object> facts);
@@ -137,7 +157,9 @@ namespace NRules
         /// Updates existing facts in the rules engine memory if the facts exist.
         /// If any of the facts don't exist in the engine, the behavior is defined by <see cref="BatchOptions"/>.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Facts to update.</param>
         /// <param name="options">Options that define behavior of the batch operation.</param>
         /// <returns>Result of facts update.</returns>
@@ -146,7 +168,9 @@ namespace NRules
         /// <summary>
         /// Updates existing fact in the rules engine memory.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="fact">Fact to update.</param>
         /// <exception cref="ArgumentException">If fact does not exist in working memory.</exception>
         void Update(object fact);
@@ -154,7 +178,9 @@ namespace NRules
         /// <summary>
         /// Updates a fact in the rules engine memory if the fact exists.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="fact">Fact to update.</param>
         /// <returns>Whether the fact was updated or not.</returns>
         bool TryUpdate(object fact);
@@ -162,7 +188,9 @@ namespace NRules
         /// <summary>
         /// Removes existing facts from the rules engine memory.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Facts to remove.</param>
         /// <exception cref="ArgumentException">If any fact does not exist in working memory.</exception>
         void RetractAll(IEnumerable<object> facts);
@@ -171,7 +199,9 @@ namespace NRules
         /// Removes existing facts from the rules engine memory if the facts exist.
         /// If any of the facts don't exist in the engine, none of the facts are removed.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Facts to remove.</param>
         /// <returns>Result of facts removal.</returns>
         IFactResult TryRetractAll(IEnumerable<object> facts);
@@ -180,7 +210,9 @@ namespace NRules
         /// Removes existing facts from the rules engine memory if the facts exist.
         /// If any of the facts don't exist in the engine, the behavior is defined by <see cref="BatchOptions"/>.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Facts to remove.</param>
         /// <param name="options">Options that define behavior of the batch operation.</param>
         /// <returns>Result of facts removal.</returns>
@@ -189,7 +221,9 @@ namespace NRules
         /// <summary>
         /// Removes existing fact from the rules engine memory.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="fact">Fact to remove.</param>
         /// <exception cref="ArgumentException">If fact does not exist in working memory.</exception>
         void Retract(object fact);
@@ -197,7 +231,9 @@ namespace NRules
         /// <summary>
         /// Removes a fact from the rules engine memory if the fact exists.
         /// </summary>
-        /// <remarks>Bulk session operations are more performant than individual operations on a set of facts.</remarks>
+        /// <remarks>
+        /// Bulk session operations are more performant than individual operations on a set of facts.
+        /// </remarks>
         /// <param name="facts">Fact to remove.</param>
         /// <returns>Whether the fact was retracted or not.</returns>
         bool TryRetract(object facts);
@@ -210,11 +246,26 @@ namespace NRules
 
         /// <summary>
         /// Starts rules execution cycle.
+        /// This method blocks until there are no more rules to fire.
+        /// </summary>
+        /// <returns>Number of rules that fired.</returns>
+        int Fire();
+
+        /// <summary>
+        /// Starts rules execution cycle.
         /// This method blocks until there are no more rules to fire or cancellation is requested.
         /// </summary>
         /// <param name="cancellationToken">Enables cooperative cancellation of the rules execution cycle.</param>
         /// <returns>Number of rules that fired.</returns>
-        int Fire(CancellationToken cancellationToken = default(CancellationToken));
+        int Fire(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Starts rules execution cycle.
+        /// This method blocks until maximum number of rules fired or there are no more rules to fire.
+        /// </summary>
+        /// <param name="maxRulesNumber">Maximum number of rules to fire.</param>
+        /// <returns>Number of rules that fired.</returns>
+        int Fire(int maxRulesNumber);
 
         /// <summary>
         /// Starts rules execution cycle.
@@ -223,7 +274,7 @@ namespace NRules
         /// <param name="maxRulesNumber">Maximum number of rules to fire.</param>
         /// <param name="cancellationToken">Enables cooperative cancellation of the rules execution cycle.</param>
         /// <returns>Number of rules that fired.</returns>
-        int Fire(int maxRulesNumber, CancellationToken cancellationToken = default(CancellationToken));
+        int Fire(int maxRulesNumber, CancellationToken cancellationToken);
 
         /// <summary>
         /// Creates a LINQ query to retrieve facts of a given type from the rules engine's memory.
@@ -245,10 +296,7 @@ namespace NRules
         void QueueRetractLinked(Activation activation);
     }
 
-    /// <summary>
-    /// See <see cref="ISession"/>.
-    /// </summary>
-    public sealed class Session : ISessionInternal, ISessionSnapshotProvider
+    internal sealed class Session : ISessionInternal
     {
         private static readonly ILinkedFactSet[] EmptyLinkedFactResult = new ILinkedFactSet[0];
 
@@ -256,6 +304,7 @@ namespace NRules
         private readonly INetwork _network;
         private readonly IWorkingMemory _workingMemory;
         private readonly IEventAggregator _eventAggregator;
+        private readonly IMetricsAggregator _metricsAggregator;
         private readonly IActionExecutor _actionExecutor;
         private readonly IExecutionContext _executionContext;
         private readonly Queue<LinkedFactSet> _linkedFacts = new Queue<LinkedFactSet>();
@@ -265,6 +314,7 @@ namespace NRules
             IAgendaInternal agenda,
             IWorkingMemory workingMemory,
             IEventAggregator eventAggregator,
+            IMetricsAggregator metricsAggregator,
             IActionExecutor actionExecutor,
             IIdGenerator idGenerator,
             IDependencyResolver dependencyResolver,
@@ -274,8 +324,9 @@ namespace NRules
             _workingMemory = workingMemory;
             _agenda = agenda;
             _eventAggregator = eventAggregator;
+            _metricsAggregator = metricsAggregator;
             _actionExecutor = actionExecutor;
-            _executionContext = new ExecutionContext(this, _workingMemory, _agenda, _eventAggregator, idGenerator);
+            _executionContext = new ExecutionContext(this, _workingMemory, _agenda, _eventAggregator, _metricsAggregator, idGenerator);
             DependencyResolver = dependencyResolver;
             ActionInterceptor = actionInterceptor;
             AutoPropagateLinkedFacts = true;
@@ -284,6 +335,7 @@ namespace NRules
         public bool AutoPropagateLinkedFacts { get; set; }
         public IAgenda Agenda => _agenda;
         public IEventProvider Events => _eventAggregator;
+        public IMetricsProvider Metrics => _metricsAggregator;
         public IDependencyResolver DependencyResolver { get; set; }
         public IActionInterceptor ActionInterceptor { get; set; }
 
@@ -291,6 +343,7 @@ namespace NRules
 
         internal void Activate()
         {
+            _agenda.Initialize(_executionContext);
             _network.Activate(_executionContext);
         }
 
@@ -631,12 +684,22 @@ namespace NRules
             QueueRetractLinked(activation, keyedFacts);
         }
 
-        public int Fire(CancellationToken cancellationToken = default)
+        public int Fire()
+        {
+            return Fire(default(CancellationToken));
+        }
+
+        public int Fire(CancellationToken cancellationToken)
         {
             return Fire(Int32.MaxValue, cancellationToken);
         }
 
-        public int Fire(int maxRulesNumber, CancellationToken cancellationToken = default)
+        public int Fire(int maxRulesNumber)
+        {
+            return Fire(maxRulesNumber, default);
+        }
+
+        public int Fire(int maxRulesNumber, CancellationToken cancellationToken)
         {
             int ruleFiredCount = 0;
             while (!_agenda.IsEmpty && ruleFiredCount < maxRulesNumber)
@@ -650,8 +713,8 @@ namespace NRules
                 }
                 finally
                 {
-				    ruleFiredCount++;
-					if (AutoPropagateLinkedFacts) PropagateLinked();
+                    ruleFiredCount++;
+                    if (AutoPropagateLinkedFacts) PropagateLinked();
                 }
 
                 if (actionContext.IsHalted || cancellationToken.IsCancellationRequested) break;
@@ -670,12 +733,6 @@ namespace NRules
             fact.RawObject = factObject;
         }
 
-        SessionSnapshot ISessionSnapshotProvider.GetSnapshot()
-        {
-            var builder = new SnapshotBuilder();
-            var visitor = new SessionSnapshotVisitor(_workingMemory);
-            _network.Visit(builder, visitor);
-            return builder.Build();
-        }
+        ReteGraph ISessionSchemaProvider.GetSchema() => _network.GetSchema();
     }
 }
