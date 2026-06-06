@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -28,7 +30,7 @@ public class GroupJoinSeveralQueriesTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
         Assert.Equal(2, fact11.EvalCount);
     }
 
@@ -48,7 +50,7 @@ public class GroupJoinSeveralQueriesTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert - 1
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
         Assert.Equal(1, fact11.EvalCount);
 
         //Act - 2
@@ -56,7 +58,7 @@ public class GroupJoinSeveralQueriesTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert - 2
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
         Assert.Equal(2, fact11.EvalCount);
     }
 
@@ -76,7 +78,7 @@ public class GroupJoinSeveralQueriesTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert - 1
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
         Assert.Equal(1, fact11.EvalCount);
 
         //Act - 2
@@ -84,7 +86,7 @@ public class GroupJoinSeveralQueriesTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert - 2
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
         Assert.Equal(2, fact11.EvalCount);
     }
 
@@ -104,7 +106,7 @@ public class GroupJoinSeveralQueriesTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert - 1
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
         Assert.Equal(1, fact11.EvalCount);
 
         //Act - 2
@@ -112,19 +114,21 @@ public class GroupJoinSeveralQueriesTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert - 2
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
         Assert.Equal(2, fact11.EvalCount);
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
 
     public class FactType1
     {
-        public string TestProperty { get; set; }
-        public string JoinProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
+        [NotNull]
+        public string? JoinProperty { get; set; }
         public int EvalCount { get; set; }
     }
 
@@ -136,23 +140,26 @@ public class GroupJoinSeveralQueriesTest : BaseRulesTestFixture
         }
 
         public int Id { get; }
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class FactType3
     {
-        public string TestProperty { get; set; }
-        public string GroupProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
+        [NotNull]
+        public string? GroupProperty { get; set; }
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            FactType1 fact1 = null;
-            FactType2 fact21 = null;
-            FactType2 fact22 = null;
-            IEnumerable<FactType3> group = null;
+            FactType1 fact1 = null!;
+            FactType2 fact21 = null!;
+            FactType2 fact22 = null!;
+            IEnumerable<FactType3> group = null!;
 
             When()
                 .Match(() => fact1, f => f.TestProperty.StartsWith("Valid"))

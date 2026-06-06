@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using NRules.AgendaFilters;
 using NRules.Diagnostics;
 using NRules.Extensibility;
@@ -18,26 +17,6 @@ namespace NRules;
 /// If repeatedly running rules for different sets of facts, don't create a new session factory for each rules run.
 /// Instead, have a single session factory and create a new rules session for each independent universe of facts.
 /// </remarks>
-/// <event cref="IEventProvider.FactInsertingEvent">Before processing fact insertion.</event>
-/// <event cref="IEventProvider.FactInsertedEvent">After processing fact insertion.</event>
-/// <event cref="IEventProvider.FactUpdatingEvent">Before processing fact update.</event>
-/// <event cref="IEventProvider.FactUpdatedEvent">After processing fact update.</event>
-/// <event cref="IEventProvider.FactRetractingEvent">Before processing fact retraction.</event>
-/// <event cref="IEventProvider.FactRetractedEvent">After processing fact retraction.</event>
-/// <event cref="IEventProvider.ActivationCreatedEvent">When a set of facts matches a rule.</event>
-/// <event cref="IEventProvider.ActivationUpdatedEvent">When a set of facts is updated and re-matches a rule.</event>
-/// <event cref="IEventProvider.ActivationDeletedEvent">When a set of facts no longer matches a rule.</event>
-/// <event cref="IEventProvider.RuleFiringEvent">Before rule's actions are executed.</event>
-/// <event cref="IEventProvider.RuleFiredEvent">After rule's actions are executed.</event>
-/// <event cref="IEventProvider.LhsExpressionEvaluatedEvent">When an left-hand side expression was evaluated.</event>
-/// <event cref="IEventProvider.LhsExpressionFailedEvent">When there is an error during left-hand side expression evaluation,
-/// before throwing exception to the client.</event>
-/// <event cref="IEventProvider.AgendaExpressionEvaluatedEvent">When an agenda expression was evaluated.</event>
-/// <event cref="IEventProvider.AgendaExpressionFailedEvent">When there is an error during agenda expression evaluation,
-/// before throwing exception to the client.</event>
-/// <event cref="IEventProvider.RhsExpressionEvaluatedEvent">When an right-hand side expression was evaluated.</event>
-/// <event cref="IEventProvider.RhsExpressionFailedEvent">When there is an error during right-hand side expression evaluation,
-/// before throwing exception to the client.</event>
 /// <seealso cref="ISession"/>
 /// <seealso cref="RuleCompiler"/>
 /// <threadsafety instance="true" />
@@ -59,7 +38,7 @@ public interface ISessionFactory : ISessionSchemaProvider
     /// Action interceptor for all rules sessions.
     /// If provided, invocation of rule actions is delegated to the interceptor.
     /// </summary>
-    IActionInterceptor ActionInterceptor { get; set; }
+    IActionInterceptor? ActionInterceptor { get; set; }
 
     /// <summary>
     /// Creates a new rules session.
@@ -78,29 +57,32 @@ public interface ISessionFactory : ISessionSchemaProvider
 internal sealed class SessionFactory : ISessionFactory
 {
     private readonly INetwork _network;
+    private readonly IFactIdentityComparer _factIdentityComparer;
     private readonly List<ICompiledRule> _compiledRules;
     private readonly IEventAggregator _eventAggregator = new EventAggregator();
 
-    public SessionFactory(INetwork network, IEnumerable<ICompiledRule> compiledRules)
+    public SessionFactory(INetwork network, IEnumerable<ICompiledRule> compiledRules,
+        IFactIdentityComparer factIdentityComparer)
     {
         _network = network;
+        _factIdentityComparer = factIdentityComparer;
         _compiledRules = new List<ICompiledRule>(compiledRules);
         DependencyResolver = new DependencyResolver();
     }
 
     public IEventProvider Events => _eventAggregator;
     public IDependencyResolver DependencyResolver { get; set; }
-    public IActionInterceptor ActionInterceptor { get; set; }
+    public IActionInterceptor? ActionInterceptor { get; set; }
 
     public ISession CreateSession()
     {
         return CreateSession(null);
     }
 
-    public ISession CreateSession(Action<ISession> initializationAction)
+    public ISession CreateSession(Action<ISession>? initializationAction)
     {
         var agenda = CreateAgenda();
-        var workingMemory = new WorkingMemory();
+        var workingMemory = new WorkingMemory(_factIdentityComparer);
         var eventAggregator = new EventAggregator(_eventAggregator);
         var metricsAggregator = new MetricsAggregator();
         var actionExecutor = new ActionExecutor();
@@ -116,7 +98,7 @@ internal sealed class SessionFactory : ISessionFactory
         var agenda = new Agenda();
         foreach (var compiledRule in _compiledRules)
         {
-            var ruleFilters = CreateRuleFilters(compiledRule).ToArray();
+            var ruleFilters = CreateRuleFilters(compiledRule);
             foreach (var filter in ruleFilters)
             {
                 agenda.AddFilter(compiledRule.Definition, filter);
@@ -127,14 +109,14 @@ internal sealed class SessionFactory : ISessionFactory
 
     private static IEnumerable<IAgendaFilter> CreateRuleFilters(ICompiledRule compiledRule)
     {
-        var filterConditions = compiledRule.Filter.Conditions.ToList();
-        if (filterConditions.Any())
+        var filterConditions = compiledRule.Filter.Conditions;
+        if (filterConditions.Count > 0)
         {
             var filter = new PredicateAgendaFilter(filterConditions);
             yield return filter;
         }
-        var filterKeySelectors = compiledRule.Filter.KeySelectors.ToList();
-        if (filterKeySelectors.Any())
+        var filterKeySelectors = compiledRule.Filter.KeySelectors;
+        if (filterKeySelectors.Count > 0)
         {
             var filter = new KeyChangeAgendaFilter(filterKeySelectors);
             yield return filter;

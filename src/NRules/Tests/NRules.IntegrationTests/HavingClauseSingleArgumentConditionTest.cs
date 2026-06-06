@@ -1,5 +1,7 @@
-﻿using NRules.Fluent.Dsl;
+﻿using System.Diagnostics.CodeAnalysis;
+using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -19,26 +21,28 @@ public class HavingClauseSingleArgumentConditionTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
 
     public class FactType1
     {
-        public string Discriminator { get; set; }
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? Discriminator { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            FactType1 fact1 = default;
-            FactType1 fact2 = default;
+            FactType1 fact1 = default!;
+            FactType1 fact2 = default!;
 
             When()
                 .Match(() => fact1, i => i.Discriminator == "Type1")

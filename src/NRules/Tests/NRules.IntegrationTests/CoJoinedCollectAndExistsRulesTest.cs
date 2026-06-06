@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -19,8 +21,8 @@ public class CoJoinedCollectAndExistsRulesTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule<CollectionRule>().FiredTimes(1);
-        Verify.Rule<ExistsRule>().FiredTimes(0);
+        Verify(x => x.Rule<CollectionRule>().Fired());
+        Verify(x => x.Rule<ExistsRule>().Fired(Times.Never));
     }
 
     [Fact]
@@ -37,11 +39,14 @@ public class CoJoinedCollectAndExistsRulesTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule<CollectionRule>().FiredTimes(1);
-        Verify.Rule<ExistsRule>().FiredTimes(1);
+        Verify(x =>
+        {
+            x.Rule<CollectionRule>().Fired();
+            x.Rule<ExistsRule>().Fired();
+        });
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<ExistsRule>();
         setup.Rule<CollectionRule>();
@@ -49,20 +54,23 @@ public class CoJoinedCollectAndExistsRulesTest : BaseRulesTestFixture
 
     public class FactType1
     {
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class FactType2
     {
-        public string TestProperty { get; set; }
-        public string JoinProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
+        [NotNull]
+        public string? JoinProperty { get; set; }
     }
 
     public class ExistsRule : Rule
     {
         public override void Define()
         {
-            FactType1 fact = null;
+            FactType1 fact = null!;
 
             When()
                 .Match(() => fact, f => f.TestProperty.StartsWith("Valid"))
@@ -77,8 +85,8 @@ public class CoJoinedCollectAndExistsRulesTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            FactType1 fact = null;
-            IEnumerable<FactType2> collection = null;
+            FactType1 fact = null!;
+            IEnumerable<FactType2> collection = null!;
 
             When()
                 .Match(() => fact, f => f.TestProperty.StartsWith("Valid"))

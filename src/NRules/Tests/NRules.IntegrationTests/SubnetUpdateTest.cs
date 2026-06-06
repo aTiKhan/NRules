@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
 using NRules.RuleModel;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -22,18 +23,18 @@ public class SubnetUpdateTest : BaseRulesTestFixture
         Session.InsertAll(new[] { fact21, fact22 });
 
         int evaluations = 0;
-        Session.Events.LhsExpressionEvaluatedEvent += (sender, args) => evaluations++;
+        Session.Events.LhsExpressionEvaluatedEvent += (_, _) => evaluations++;
 
         //Act
         Session.UpdateAll(new[] { fact11, fact12 });
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
         Assert.Equal(2, evaluations);
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
@@ -52,8 +53,8 @@ public class SubnetUpdateTest : BaseRulesTestFixture
 
         public override void Define()
         {
-            FactType1 fact = null;
-            IEnumerable<FactType2> collection = null;
+            FactType1 fact = null!;
+            IEnumerable<FactType2> collection = null!;
 
             When()
                 .Match(() => fact)

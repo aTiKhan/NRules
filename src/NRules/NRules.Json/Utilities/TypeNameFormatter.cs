@@ -6,14 +6,14 @@ namespace NRules.Json.Utilities;
 
 internal static class TypeNameFormatter
 {
-    private static readonly HashSet<string> SystemAssemblyNames = new() { "mscorlib", "System.Core", "System.Private.CoreLib" };
+    private static readonly HashSet<string> SystemAssemblyNames = ["mscorlib", "System.Core", "System.Private.CoreLib"];
 
     public static string ConstructAssemblyQualifiedTypeName(TypeName typeName)
     {
-        if (typeName.FullName == null ||
-            typeName.AssemblyName == null ||
-            SystemAssemblyNames.Contains(typeName.AssemblyName.Name)) return typeName.FullName;
-        return Assembly.CreateQualifiedName(typeName.AssemblyName.FullName, typeName.FullName);
+        var assemblyName = typeName.AssemblyName;
+        if (assemblyName == null ||
+            SystemAssemblyNames.Contains(assemblyName.Name)) return typeName.FullName;
+        return Assembly.CreateQualifiedName(assemblyName.FullName, typeName.FullName);
     }
     
     public static TypeName ConstructGenericTypeName(TypeName definitionTypeName, TypeName[] typeArgumentNames)

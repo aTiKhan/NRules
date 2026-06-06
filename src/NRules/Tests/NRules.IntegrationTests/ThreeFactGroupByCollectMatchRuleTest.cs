@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -23,7 +25,7 @@ public class ThreeFactGroupByCollectMatchRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -42,7 +44,7 @@ public class ThreeFactGroupByCollectMatchRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -61,7 +63,7 @@ public class ThreeFactGroupByCollectMatchRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -80,37 +82,38 @@ public class ThreeFactGroupByCollectMatchRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
 
     public class FactType1
     {
-        public string Key { get; set; }
-        public string Join { get; set; }
+        [NotNull]
+        public string? Key { get; set; }
+        public string? Join { get; set; }
     }
 
     public class FactType2
     {
-        public string Join { get; set; }
+        public string? Join { get; set; }
     }
 
     public class FactType3
     {
-        public string Join { get; set; }
+        public string? Join { get; set; }
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            IGrouping<string, FactType1> group = default;
-            IEnumerable<FactType2> facts2 = default;
-            FactType3 fact3 = default;
+            IGrouping<string, FactType1> group = default!;
+            IEnumerable<FactType2> facts2 = default!;
+            FactType3 fact3 = default!;
 
             When()
                 .Query(() => group, x => x

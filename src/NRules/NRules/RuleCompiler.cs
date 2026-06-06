@@ -7,7 +7,6 @@ using NRules.Aggregators;
 using NRules.Extensibility;
 using NRules.Rete;
 using NRules.RuleModel;
-using NRules.RuleModel.Builders;
 using NRules.Utilities;
 
 namespace NRules;
@@ -26,7 +25,7 @@ public class RuleCompiler
     /// using the default <see cref="RuleCompilerOptions"/>.
     /// </summary>
     public RuleCompiler()
-        : this(new RuleCompilerOptions())
+        : this(RuleCompilerOptions.Default)
     {
     }
 
@@ -34,11 +33,17 @@ public class RuleCompiler
     /// Initializes a new instance of the <see cref="RuleCompiler"/> class
     /// using the specified <see cref="RuleCompilerOptions"/>.
     /// </summary>
-    /// <param name="options"></param>
+    /// <param name="options">Compiler options to use.</param>
     public RuleCompiler(RuleCompilerOptions options)
     {
         _options = options;
     }
+    
+    /// <summary>
+    /// Equality comparers for specific fact types, used to compare fact identity, when inserting, updating, removing
+    /// facts within the rules session.
+    /// </summary>
+    public FactIdentityComparerRegistry FactIdentityComparerRegistry { get; } = new();
 
     /// <summary>
     /// Registry of custom aggregator factories.
@@ -68,7 +73,7 @@ public class RuleCompiler
     /// <seealso cref="IRuleRepository"/>
     public ISessionFactory Compile(IEnumerable<IRuleDefinition> ruleDefinitions)
     {
-        return Compile(ruleDefinitions, default);
+        return Compile(ruleDefinitions, CancellationToken.None);
     }
 
     /// <summary>
@@ -99,7 +104,10 @@ public class RuleCompiler
         }
 
         INetwork network = reteBuilder.Build();
-        var factory = new SessionFactory(network, compiledRules);
+        var factIdentityComparer = new FactIdentityComparer(
+            FactIdentityComparerRegistry.DefaultFactIdentityComparer,
+            FactIdentityComparerRegistry.GetComparers());
+        var factory = new SessionFactory(network, compiledRules, factIdentityComparer);
         return factory;
     }
 
@@ -111,7 +119,7 @@ public class RuleCompiler
     /// <exception cref="RuleCompilationException">Any fatal error during rules compilation.</exception>
     public ISessionFactory Compile(IEnumerable<IRuleSet> ruleSets)
     {
-        return Compile(ruleSets, default);
+        return Compile(ruleSets, CancellationToken.None);
     }
 
     /// <summary>
@@ -127,15 +135,15 @@ public class RuleCompiler
         return Compile(rules, cancellationToken);
     }
 
-    private IEnumerable<ICompiledRule> CompileRule(IReteBuilder reteBuilder, IRuleDefinition ruleDefinition)
+    private IReadOnlyCollection<ICompiledRule> CompileRule(IReteBuilder reteBuilder, IRuleDefinition ruleDefinition)
     {
         var rules = new List<ICompiledRule>();
 
-        var transformation = new RuleTransformation();
-        var transformedRule = transformation.Transform(ruleDefinition);
-        var ruleDeclarations = transformedRule.LeftHandSide.Exports.ToList();
+        var normalization = new RuleNormalization();
+        var transformedRule = normalization.Normalize(ruleDefinition);
+        var ruleDeclarations = transformedRule.LeftHandSide.Exports;
 
-        var dependencies = transformedRule.DependencyGroup.Dependencies.ToList();
+        var dependencies = transformedRule.DependencyGroup.Dependencies;
         var terminals = reteBuilder.AddRule(transformedRule);
 
         foreach (var terminal in terminals)
@@ -143,7 +151,7 @@ public class RuleCompiler
             IRuleFilter filter = CompileFilters(transformedRule, ruleDeclarations, terminal.FactMap);
 
             var rightHandSide = transformedRule.RightHandSide;
-            var actions = new List<IRuleAction>();
+            var actions = new List<IRuleAction>(rightHandSide.Actions.Count);
             foreach (var action in rightHandSide.Actions)
             {
                 var ruleAction = _ruleExpressionCompiler.CompileAction(action, ruleDeclarations, dependencies, terminal.FactMap);
@@ -159,7 +167,7 @@ public class RuleCompiler
         return rules;
     }
 
-    private IRuleFilter CompileFilters(IRuleDefinition ruleDefinition, List<Declaration> ruleDeclarations, IndexMap tupleFactMap)
+    private IRuleFilter CompileFilters(IRuleDefinition ruleDefinition, IReadOnlyCollection<Declaration> ruleDeclarations, IndexMap tupleFactMap)
     {
         var conditions = new List<IActivationExpression<bool>>();
         var keySelectors = new List<IActivationExpression<object>>();
@@ -183,7 +191,7 @@ public class RuleCompiler
         return compiledFilter;
     }
 
-    private RuleNode BuildRuleNode(ICompiledRule compiledRule, ITerminal terminal)
+    private static RuleNode BuildRuleNode(ICompiledRule compiledRule, ITerminal terminal)
     {
         var ruleNode = new RuleNode(compiledRule);
         ruleNode.NodeInfo.Add(compiledRule.Definition);

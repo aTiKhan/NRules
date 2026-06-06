@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -18,7 +20,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -34,7 +36,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
     }
 
     [Fact]
@@ -50,7 +52,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -66,7 +68,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -84,7 +86,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -100,7 +102,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -116,7 +118,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -131,7 +133,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
         Assert.Throws<ArgumentException>(() => Session.Insert(fact2));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
@@ -144,9 +146,10 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
         }
 
         public int Id { get; }
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
 
-        public bool Equals(FactType other)
+        public bool Equals(FactType? other)
         {
             if (other is null)
                 return false;
@@ -155,7 +158,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
             return Id == other.Id;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is null)
                 return false;
@@ -176,7 +179,7 @@ public class OneEquatableFactRuleTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             When()
                 .Match(() => fact, f => f.TestProperty.StartsWith("Valid"));

@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.RuleModel;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -34,57 +37,38 @@ public class OneFactOneGroupByFlattenWithIdentityRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        var firedFacts = GetFiredFact<IGrouping<string, FactType>>();
-        Assert.Equal(4, firedFacts.Count());
-        Assert.Equal(1, firedFacts.Count(x => x.TestCount == 3));
-        Assert.Equal(1, firedFacts.Count(x => x.TestCount == 2));
-        Assert.Equal(2, firedFacts.Count(x => x.TestCount == 1));
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<string, FactType>>()
+            .Callback(firedFacts =>
+            {
+                Assert.Equal(4, firedFacts.Count());
+                Assert.Equal(1, firedFacts.Count(x => x.TestCount == 3));
+                Assert.Equal(1, firedFacts.Count(x => x.TestCount == 2));
+                Assert.Equal(2, firedFacts.Count(x => x.TestCount == 1));
+            })));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
 
-    public class FactType : IEquatable<FactType>
+    public class FactType : IIdentityProvider
     {
         public long Id { get; set; }
         public int TestCount { get; set; }
-        public string GroupingProperty { get; set; }
-        public string GroupingProperty2 { get; set; }
+        [NotNull]
+        public string? GroupingProperty { get; set; }
+        [NotNull]
+        public string? GroupingProperty2 { get; set; }
 
-        public bool Equals(FactType other)
-        {
-            if (other is null)
-                return false;
-            if (ReferenceEquals(this, other))
-                return true;
-            return Id == other.Id;
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj is null)
-                return false;
-            if (ReferenceEquals(this, obj))
-                return true;
-            if (obj.GetType() != GetType())
-                return false;
-            return Equals((FactType)obj);
-        }
-
-        public override int GetHashCode()
-        {
-            return Id.GetHashCode();
-        }
+        public object GetIdentity() => Id;
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            IEnumerable<FactType> facts = null;
+            IEnumerable<FactType> facts = null!;
 
             When()
                 .Query(() => facts, q => q

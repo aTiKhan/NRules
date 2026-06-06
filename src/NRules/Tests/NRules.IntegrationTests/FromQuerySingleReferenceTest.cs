@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -22,7 +24,7 @@ public class FromQuerySingleReferenceTest : BaseRulesTestFixture
         Session.Fire();
 
         // Assert
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
     }
 
     [Fact]
@@ -39,7 +41,7 @@ public class FromQuerySingleReferenceTest : BaseRulesTestFixture
         Session.Fire();
 
         // Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -56,7 +58,7 @@ public class FromQuerySingleReferenceTest : BaseRulesTestFixture
         Session.Fire();
 
         // Assert
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
 
         // Arrange
         Session.RetractAll(facts);
@@ -65,25 +67,26 @@ public class FromQuerySingleReferenceTest : BaseRulesTestFixture
         Session.Fire();
 
         // Assert
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<FromQuerySingleReferenceRule>();
     }
 
     public class Fact
     {
-        public string Value { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
     public class FromQuerySingleReferenceRule : Rule
     {
         public override void Define()
         {
-            IEnumerable<Fact> factsAll = null;
-            IGrouping<string, Fact> factsGrouped = null;
+            IEnumerable<Fact> factsAll = null!;
+            IGrouping<string, Fact> factsGrouped = null!;
 
             When()
                 .Query(() => factsAll, q => q

@@ -6,21 +6,14 @@ using System.Reflection;
 
 namespace NRules.Utilities;
 
-internal class ExpressionComparer
+internal class ExpressionComparer(RuleCompilerOptions compilerOptions)
 {
-    private readonly RuleCompilerOptions _compilerOptions;
-
-    public ExpressionComparer(RuleCompilerOptions compilerOptions)
-    {
-        _compilerOptions = compilerOptions;
-    }
-
-    public bool AreEqual(Expression x, Expression y)
+    public bool AreEqual(Expression? x, Expression? y)
     {
         return ExpressionEqual(x, y, null, null);
     }
 
-    private bool ExpressionEqual(Expression x, Expression y, LambdaExpression rootX, LambdaExpression rootY)
+    private bool ExpressionEqual(Expression? x, Expression? y, LambdaExpression? rootX, LambdaExpression? rootY)
     {
         if (ReferenceEquals(x, y)) return true;
         if (x == null || y == null) return false;
@@ -54,7 +47,7 @@ internal class ExpressionComparer
             case ParameterExpression px:
             {
                 var py = (ParameterExpression)y;
-                return rootX.Parameters.IndexOf(px) == rootY.Parameters.IndexOf(py);
+                return rootX?.Parameters.IndexOf(px) == rootY?.Parameters.IndexOf(py);
             }
             case MethodCallExpression cx:
             {
@@ -115,12 +108,13 @@ internal class ExpressionComparer
                 return dx.Type == dy.Type;
             }
             default:
-                return HandleUnsupportedExpression(x.ToString());
+                return HandleUnsupportedExpression(
+                    $"Unsupported expression type. Type={x.GetType()}, Expression={x}");
         }
     }
 
     private bool MemberBindingCollectionsEqual(IReadOnlyCollection<MemberBinding> x, IReadOnlyCollection<MemberBinding> y,
-        LambdaExpression rootX, LambdaExpression rootY)
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         return x.Count == y.Count
                && x.Zip(y, (first, second) => new {X = first, Y = second})
@@ -128,7 +122,7 @@ internal class ExpressionComparer
     }
 
     private bool ElementInitCollectionsEqual(IReadOnlyCollection<ElementInit> x, IReadOnlyCollection<ElementInit> y,
-        LambdaExpression rootX, LambdaExpression rootY)
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         return x.Count == y.Count
                && x.Zip(y, (first, second) => new {X = first, Y = second})
@@ -136,22 +130,22 @@ internal class ExpressionComparer
     }
 
     private bool CollectionsEqual(IReadOnlyCollection<Expression> x, IReadOnlyCollection<Expression> y,
-        LambdaExpression rootX, LambdaExpression rootY)
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         return x.Count == y.Count
                && x.Zip(y, (first, second) => new {X = first, Y = second})
                    .All(o => ExpressionEqual(o.X, o.Y, rootX, rootY));
     }
 
-    private bool ElementInitsEqual(ElementInit x, ElementInit y, LambdaExpression rootX,
-        LambdaExpression rootY)
+    private bool ElementInitsEqual(ElementInit x, ElementInit y,
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         return Equals(x.AddMethod, y.AddMethod)
                && CollectionsEqual(x.Arguments, y.Arguments, rootX, rootY);
     }
 
-    private bool MemberBindingsEqual(MemberBinding x, MemberBinding y, LambdaExpression rootX,
-        LambdaExpression rootY)
+    private bool MemberBindingsEqual(MemberBinding x, MemberBinding y,
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         if (x.BindingType != y.BindingType)
             return false;
@@ -171,11 +165,13 @@ internal class ExpressionComparer
                 var mlby = (MemberListBinding)y;
                 return ElementInitCollectionsEqual(mlbx.Initializers, mlby.Initializers, rootX, rootY);
             default:
-                return HandleUnsupportedExpression($"Unsupported binding type. BindingType={x.BindingType}");
+                return HandleUnsupportedExpression(
+                    $"Unsupported binding type in member binding. BindingType={x.BindingType}, MemberBinding={x}");
         }
     }
 
-    private bool MemberExpressionsEqual(MemberExpression x, MemberExpression y, LambdaExpression rootX, LambdaExpression rootY)
+    private bool MemberExpressionsEqual(MemberExpression x, MemberExpression y,
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         if (x.Expression == null || y.Expression == null)
             return Equals(x.Member, y.Member);
@@ -202,12 +198,14 @@ internal class ExpressionComparer
             case ExpressionType.Modulo:
             case ExpressionType.Power:
             case ExpressionType.Conditional:
+            case ExpressionType.Call:
+            case ExpressionType.TypeAs:
                 return Equals(x.Member, y.Member) && ExpressionEqual(x.Expression, y.Expression, rootX, rootY);
             case ExpressionType.New:
-            case ExpressionType.Call:
                 return ExpressionEqual(x.Expression, y.Expression, rootX, rootY);
             default:
-                return HandleUnsupportedExpression(x.ToString());
+                return HandleUnsupportedExpression(
+                    $"Unsupported node type in member expression. NodeType={x.Expression.NodeType}, MemberExpression={x}");
         }
     }
 
@@ -218,13 +216,14 @@ internal class ExpressionComparer
         {
             FieldInfo fi => fi.GetValue(o),
             PropertyInfo pi => pi.GetValue(o, null),
-            _ => throw new ArgumentException($"Unsupported member type. MemberType={mex.Member.GetType()}")
+            _ => throw new ArgumentException(
+                $"Unsupported member type in member expression. MemberType={mex.Member.GetType()}, MemberExpression={mex}")
         };
     }
 
     private bool HandleUnsupportedExpression(string message)
     {
-        switch (_compilerOptions.UnsupportedExpressionHandling)
+        switch (compilerOptions.UnsupportedExpressionHandling)
         {
             case RuleCompilerUnsupportedExpressionsHandling.FailFast:
                 throw new NotImplementedException(message);

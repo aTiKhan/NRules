@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using NRules.Fluent.Dsl;
 using NRules.RuleModel;
 
@@ -39,7 +40,7 @@ public class RuleMetadata : IRuleMetadata
     public RuleMetadata(Type ruleType)
     {
         RuleType = ruleType;
-        Name = GetAttributes<NameAttribute>().Select(a => a.Value).SingleOrDefault() ?? RuleType.FullName;
+        Name = GetAttributes<NameAttribute>().Select(a => a.Value).SingleOrDefault() ?? RuleType.FullName!;
         Description = GetAttributes<DescriptionAttribute>().Select(a => a.Value).SingleOrDefault() ?? string.Empty;
         Tags = GetAttributes<TagAttribute>().Select(a => a.Value).ToArray();
         Priority = GetAttributes<PriorityAttribute>().SingleNullable(a => a.Value);
@@ -78,6 +79,6 @@ public class RuleMetadata : IRuleMetadata
 
     private T[] GetAttributes<T>() where T : Attribute
     {
-        return RuleType.GetCustomAttributes(true).OfType<T>().ToArray();
+        return RuleType.GetCustomAttributes<T>().ToArray();
     }
 }

@@ -15,15 +15,15 @@ public class DgmlWriter
 {
     private readonly ReteGraph _schema;
 
-    private HashSet<string> _ruleNameFilter;
-    private IMetricsProvider _metricsProvider;
+    private HashSet<string>? _ruleNameFilter;
+    private IMetricsProvider? _metricsProvider;
     
     /// <summary>
     /// Sets a filter for Rete graph nodes, such that only nodes that belong to the given
     /// set of rules is serialized, along with the connecting graph edges.
     /// </summary>
     /// <param name="ruleNames">Set of rules to use as a filter, or <c>null</c> to remove the filter.</param>
-    public void SetRuleFilter(IEnumerable<string> ruleNames)
+    public void SetRuleFilter(IEnumerable<string>? ruleNames)
     {
         _ruleNameFilter = ruleNames == null ? null : new HashSet<string>(ruleNames);
     }
@@ -112,7 +112,8 @@ public class DgmlWriter
                 Category = reteNode.NodeType.ToString()
             };
 
-            node.Properties.Add("OutputType", reteNode.OutputType?.ToString());
+            if (reteNode.OutputType != null)
+                node.Properties.Add("OutputType", reteNode.OutputType.ToString());
 
             foreach (var valueGroup in reteNode.Properties.GroupBy(x => x.Key, x => x.Value))
             {
@@ -128,13 +129,13 @@ public class DgmlWriter
                 node.Properties.Add($"{reteNode.NodeType}{key}", value);
             }
 
-            if (reteNode.Rules.Length > 0)
+            if (reteNode.Rules.Count > 0)
             {
                 var value = string.Join("; ", reteNode.Rules.Select(x => x.Name));
                 node.Properties.Add("Rule", value);
             }
 
-            if (reteNode.Rules.Length > 1)
+            if (reteNode.Rules.Count > 1)
             {
                 node.Properties.Add("Shared", true);
             }
@@ -143,7 +144,7 @@ public class DgmlWriter
         }
     }
 
-    private IEnumerable<Link> CreateLinks(IEnumerable<ReteLink> reteLinks)
+    private static IEnumerable<Link> CreateLinks(IEnumerable<ReteLink> reteLinks)
     {
         foreach (var linkInfo in reteLinks)
         {
@@ -166,7 +167,7 @@ public class DgmlWriter
         switch (reteNode.NodeType)
         {
             case NodeType.Type:
-                labelParts.Add(reteNode.OutputType.Name);
+                labelParts.Add(reteNode.OutputType!.Name);
                 break;
             case NodeType.Selection:
                 labelParts.AddRange(reteNode.Expressions.Select(x => $"{x.Value.Body}"));
@@ -199,7 +200,7 @@ public class DgmlWriter
         foreach (var node in graph.Nodes)
         {
             var reteNode = reteNodeLookup[node.Id];
-            INodeMetrics nodeMetrics = _metricsProvider?.FindByNodeId(reteNode.Id);
+            INodeMetrics? nodeMetrics = _metricsProvider?.FindByNodeId(reteNode.Id);
             if (nodeMetrics == null) continue;
 
             var totalDuration = nodeMetrics.InsertDurationMilliseconds +
@@ -218,24 +219,7 @@ public class DgmlWriter
             CreatePerformanceStyles(minDuration, maxDuration));
     }
 
-    private IEnumerable<Property> CreatePerformanceProperties()
-    {
-        yield return new Property("PerfElementCount") {DataType = "System.Int32"};
-        yield return new Property("PerfInsertInputCount") {DataType = "System.Int32"};
-        yield return new Property("PerfInsertOutputCount") {DataType = "System.Int32"};
-        yield return new Property("PerfUpdateInputCount") {DataType = "System.Int32"};
-        yield return new Property("PerfUpdateOutputCount") {DataType = "System.Int32"};
-        yield return new Property("PerfRetractInputCount") {DataType = "System.Int32"};
-        yield return new Property("PerfRetractOutputCount") {DataType = "System.Int32"};
-        yield return new Property("PerfInsertDurationMilliseconds") {DataType = "System.Int64"};
-        yield return new Property("PerfUpdateDurationMilliseconds") {DataType = "System.Int64"};
-        yield return new Property("PerfRetractDurationMilliseconds") {DataType = "System.Int64"};
-        yield return new Property("PerfTotalInputCount") {DataType = "System.Int32"};
-        yield return new Property("PerfTotalOutputCount") {DataType = "System.Int32"};
-        yield return new Property("PerfTotalDurationMilliseconds") {DataType = "System.Int64"};
-    }
-
-    private void AddPerformanceMetrics(Node node, INodeMetrics nodeMetrics)
+    private static void AddPerformanceMetrics(Node node, INodeMetrics nodeMetrics)
     {
         if (nodeMetrics.ElementCount.HasValue)
             node.Properties.Add("PerfElementCount", nodeMetrics.ElementCount.Value);
@@ -256,7 +240,24 @@ public class DgmlWriter
             nodeMetrics.InsertDurationMilliseconds + nodeMetrics.UpdateDurationMilliseconds + nodeMetrics.RetractDurationMilliseconds);
     }
     
-    private IEnumerable<Style> CreatePerformanceStyles(long minDuration, long maxDuration)
+    private static IEnumerable<Property> CreatePerformanceProperties()
+    {
+        yield return new Property("PerfElementCount") {DataType = "System.Int32"};
+        yield return new Property("PerfInsertInputCount") {DataType = "System.Int32"};
+        yield return new Property("PerfInsertOutputCount") {DataType = "System.Int32"};
+        yield return new Property("PerfUpdateInputCount") {DataType = "System.Int32"};
+        yield return new Property("PerfUpdateOutputCount") {DataType = "System.Int32"};
+        yield return new Property("PerfRetractInputCount") {DataType = "System.Int32"};
+        yield return new Property("PerfRetractOutputCount") {DataType = "System.Int32"};
+        yield return new Property("PerfInsertDurationMilliseconds") {DataType = "System.Int64"};
+        yield return new Property("PerfUpdateDurationMilliseconds") {DataType = "System.Int64"};
+        yield return new Property("PerfRetractDurationMilliseconds") {DataType = "System.Int64"};
+        yield return new Property("PerfTotalInputCount") {DataType = "System.Int32"};
+        yield return new Property("PerfTotalOutputCount") {DataType = "System.Int32"};
+        yield return new Property("PerfTotalDurationMilliseconds") {DataType = "System.Int64"};
+    }
+    
+    private static IEnumerable<Style> CreatePerformanceStyles(long minDuration, long maxDuration)
     {
         var flowProperty = "Source.PerfTotalOutputCount";
         yield return new Style("Link")
@@ -288,7 +289,7 @@ public class DgmlWriter
                 expression: $"Color.FromRgb({maxRed},{maxGreen},{maxBlue})");
     }
     
-    private IEnumerable<Style> CreateSchemaStyles()
+    private static IEnumerable<Style> CreateSchemaStyles()
     {
         yield return new Style(nameof(Node))
             .HasCategory($"{NodeType.Root}")
@@ -331,7 +332,7 @@ public class DgmlWriter
             .Setter(nameof(Node.Background), value: "Purple");
     }
     
-    private static IEnumerable<ReteNode> FilterNodes(HashSet<string> ruleNameFilter, ReteNode[] reteNodes)
+    private static IEnumerable<ReteNode> FilterNodes(HashSet<string>? ruleNameFilter, IEnumerable<ReteNode> reteNodes)
     {
         foreach (var reteNode in reteNodes)
         {
@@ -343,7 +344,7 @@ public class DgmlWriter
         }
     }
 
-    private static IEnumerable<ReteLink> FilterLinks(ReteNode[] reteNodes, ReteLink[] reteLinks)
+    private static IEnumerable<ReteLink> FilterLinks(IReadOnlyCollection<ReteNode> reteNodes, IEnumerable<ReteLink> reteLinks)
     {
         var reteNodeIds = new HashSet<int>(reteNodes.Select(x => x.Id));
         foreach (var reteLink in reteLinks)
@@ -354,12 +355,12 @@ public class DgmlWriter
         }
     }
 
-    private string Id(ReteNode reteNode)
+    private static string Id(ReteNode reteNode)
     {
         return $"{reteNode.Id}";
     }
 
-    private class Utf8StringWriter : StringWriter
+    private sealed class Utf8StringWriter : StringWriter
     {
         public override Encoding Encoding => Encoding.UTF8;
     }

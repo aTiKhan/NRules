@@ -1,5 +1,7 @@
-﻿using NRules.Fluent.Dsl;
+﻿using System.Diagnostics.CodeAnalysis;
+using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -18,8 +20,7 @@ public class TwoFactOrGroupBindingRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal("Fact1", GetFiredFact<string>());
+        Verify(x => x.Rule().Fired(Matched.Fact<string>().Callback(x => Assert.Equal("Fact1", x))));
     }
 
     [Fact]
@@ -34,8 +35,7 @@ public class TwoFactOrGroupBindingRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal("Fact2", GetFiredFact<string>());
+        Verify(x => x.Rule().Fired(Matched.Fact<string>().Callback(x => Assert.Equal("Fact2", x))));
     }
 
     [Fact]
@@ -52,35 +52,41 @@ public class TwoFactOrGroupBindingRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
-        Assert.Equal("Fact1", GetFiredFact<string>(0));
-        Assert.Equal("Fact2", GetFiredFact<string>(1));
+        VerifySequence(s =>
+        {
+            s.Rule().Fired(Matched.Fact<string>().Callback(x => Assert.Equal("Fact1", x)));
+            s.Rule().Fired(Matched.Fact<string>().Callback(x => Assert.Equal("Fact2", x)));
+        });
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
 
     public class FactType1
     {
-        public string TestProperty { get; set; }
-        public string Value { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
     public class FactType2
     {
-        public string TestProperty { get; set; }
-        public string Value { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            FactType1 fact1 = null;
-            FactType2 fact2 = null;
-            string value = null;
+            FactType1 fact1 = null!;
+            FactType2 fact2 = null!;
+            string value = null!;
 
             When()
                 .Or(x => x
@@ -92,9 +98,9 @@ public class TwoFactOrGroupBindingRuleTest : BaseRulesTestFixture
                 .Do(ctx => ctx.NoOp());
         }
 
-        private static string GetValue(FactType1 fact1, FactType2 fact2)
+        private static string GetValue(FactType1? fact1, FactType2? fact2)
         {
-            return fact1 != null ? fact1.Value : fact2.Value;
+            return fact1 != null ? fact1.Value : fact2!.Value;
         }
     }
 }

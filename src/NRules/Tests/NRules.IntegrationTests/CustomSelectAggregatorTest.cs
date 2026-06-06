@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using NRules.Aggregators;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
 using NRules.RuleModel;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -23,8 +25,7 @@ public class CustomSelectAggregatorTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal(fact.TestProperty, GetFiredFact<FactProjection>().Value);
+        Verify(x => x.Rule().Fired(Matched.Fact<FactProjection>(f => f.Value == fact.TestProperty)));
     }
 
     [Fact]
@@ -39,8 +40,7 @@ public class CustomSelectAggregatorTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal(fact.TestProperty, GetFiredFact<FactProjection>().Value);
+        Verify(x => x.Rule().Fired(Matched.Fact<FactProjection>(f => f.Value == fact.TestProperty)));
     }
 
     [Fact]
@@ -55,20 +55,21 @@ public class CustomSelectAggregatorTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
-        setup.Compiler.AggregatorRegistry.RegisterFactory(
-            "CustomSelect", typeof(CustomSelectAggregateFactory));
+        setup.CompilerSetupAction = c => c
+            .AggregatorRegistry.RegisterFactory("CustomSelect", typeof(CustomSelectAggregateFactory));
 
         setup.Rule<TestRule>();
     }
 
     public class FactType
     {
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class FactProjection : IEquatable<FactProjection>
@@ -78,9 +79,9 @@ public class CustomSelectAggregatorTest : BaseRulesTestFixture
             Value = fact.TestProperty;
         }
 
-        public string Value { get; }
+        public string? Value { get; }
 
-        public bool Equals(FactProjection other)
+        public bool Equals(FactProjection? other)
         {
             if (other is null)
                 return false;
@@ -89,7 +90,7 @@ public class CustomSelectAggregatorTest : BaseRulesTestFixture
             return string.Equals(Value, other.Value);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is null)
                 return false;
@@ -110,13 +111,13 @@ public class CustomSelectAggregatorTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            FactProjection projection = null;
+            FactProjection projection = null!;
 
             When()
                 .Query(() => projection, q => q
                     .Match<FactType>()
                     .CustomSelect(f => new FactProjection(f))
-                    .Where(p => p.Value.StartsWith("Valid")));
+                    .Where(p => p.Value!.StartsWith("Valid")));
             Then()
                 .Do(ctx => ctx.NoOp());
         }
@@ -126,6 +127,7 @@ public class CustomSelectAggregatorTest : BaseRulesTestFixture
 public static class CustomSelectQuery
 {
     public static IQuery<TResult> CustomSelect<TSource, TResult>(this IQuery<TSource> source, Expression<Func<TSource, TResult>> selector)
+        where TSource : notnull
     {
         var expressions = new List<KeyValuePair<string, LambdaExpression>>
         {
@@ -138,9 +140,9 @@ public static class CustomSelectQuery
 
 internal class CustomSelectAggregateFactory : IAggregatorFactory
 {
-    private Func<IAggregator> _factory;
+    private Func<IAggregator>? _factory;
 
-    public void Compile(AggregateElement element, IEnumerable<IAggregateExpression> compiledExpressions)
+    public void Compile(AggregateElement element, IReadOnlyCollection<IAggregateExpression> compiledExpressions)
     {
         var selector = element.Expressions["Selector"];
         var sourceType = element.Source.ValueType;
@@ -154,9 +156,9 @@ internal class CustomSelectAggregateFactory : IAggregatorFactory
         _factory = factoryExpression.Compile();
     }
 
-    public IAggregator Create()
+    public IAggregator Create(AggregationContext context)
     {
-        return _factory();
+        return _factory!();
     }
 }
 
@@ -170,7 +172,7 @@ public class CustomSelectAggregator<TSource, TResult> : IAggregator
         _selector = selector;
     }
 
-    public IEnumerable<AggregationResult> Add(AggregationContext context, ITuple tuple, IEnumerable<IFact> facts)
+    public IReadOnlyCollection<AggregationResult> Add(AggregationContext context, ITuple tuple, IReadOnlyCollection<IFact> facts)
     {
         var results = new List<AggregationResult>();
         foreach (var fact in facts)
@@ -182,20 +184,20 @@ public class CustomSelectAggregator<TSource, TResult> : IAggregator
         return results;
     }
 
-    public IEnumerable<AggregationResult> Modify(AggregationContext context, ITuple tuple, IEnumerable<IFact> facts)
+    public IReadOnlyCollection<AggregationResult> Modify(AggregationContext context, ITuple tuple, IReadOnlyCollection<IFact> facts)
     {
         var results = new List<AggregationResult>();
         foreach (var fact in facts)
         {
             var value = _selector.Invoke(context, tuple, fact);
-            var oldValue = (TResult)_sourceToValue[fact];
+            var oldValue = (TResult)_sourceToValue[fact]!;
             _sourceToValue[fact] = value;
             results.Add(AggregationResult.Modified(value, oldValue, Enumerable.Repeat(fact, 1)));
         }
         return results;
     }
 
-    public IEnumerable<AggregationResult> Remove(AggregationContext context, ITuple tuple, IEnumerable<IFact> facts)
+    public IReadOnlyCollection<AggregationResult> Remove(AggregationContext context, ITuple tuple, IReadOnlyCollection<IFact> facts)
     {
         var results = new List<AggregationResult>();
         foreach (var fact in facts)

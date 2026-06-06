@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using NRules.Diagnostics;
 
 namespace NRules.Rete;
@@ -8,7 +9,7 @@ internal abstract class AlphaNode : IObjectSink
 {
     public int Id { get; set; }
     public NodeInfo NodeInfo { get; } = new();
-    public AlphaMemoryNode MemoryNode { get; set; }
+    public AlphaMemoryNode? MemoryNode { get; set; }
 
     [DebuggerDisplay("Count = {ChildNodes.Count}")]
     public List<AlphaNode> ChildNodes { get; } = new();

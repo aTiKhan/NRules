@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -24,8 +26,12 @@ public class NodeSharingNonEquivalentExpressionsTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule<TestRule1>().FiredTimes(1);
-        Verify.Rule<TestRule2>().FiredTimes(0);
+        Verify(x =>
+        {
+            x.Rule<TestRule1>().Fired();
+            x.Rule<TestRule3>().Fired();
+        });
+        Verify(x => x.Rule<TestRule2>().Fired(Times.Never));
     }
 
     [Fact]
@@ -44,8 +50,12 @@ public class NodeSharingNonEquivalentExpressionsTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule<TestRule1>().FiredTimes(0);
-        Verify.Rule<TestRule2>().FiredTimes(1);
+        Verify(x => x.Rule<TestRule1>().Fired(Times.Never));
+        Verify(x =>
+        {
+            x.Rule<TestRule2>().Fired();
+            x.Rule<TestRule4>().Fired();
+        });
     }
 
     [Fact]
@@ -64,8 +74,12 @@ public class NodeSharingNonEquivalentExpressionsTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule<TestRule3>().FiredTimes(1);
-        Verify.Rule<TestRule4>().FiredTimes(0);
+        Verify(x => x.Rule<TestRule4>().Fired(Times.Never));
+        Verify(x =>
+        {
+            x.Rule<TestRule1>().Fired();
+            x.Rule<TestRule3>().Fired();
+        });
     }
 
     [Fact]
@@ -84,11 +98,15 @@ public class NodeSharingNonEquivalentExpressionsTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule<TestRule3>().FiredTimes(0);
-        Verify.Rule<TestRule4>().FiredTimes(1);
+        Verify(x => x.Rule<TestRule3>().Fired(Times.Never));
+        Verify(x =>
+        {
+            x.Rule<TestRule2>().Fired();
+            x.Rule<TestRule4>().Fired();
+        });
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule1>();
         setup.Rule<TestRule2>();
@@ -98,12 +116,14 @@ public class NodeSharingNonEquivalentExpressionsTest : BaseRulesTestFixture
 
     public class NameFact
     {
-        public string Name { get; set; }
+        [NotNull]
+        public string? Name { get; set; }
     }
 
     public class ReferenceFact
     {
-        public NameFact Reference { get; set; }
+        [NotNull]
+        public NameFact? Reference { get; set; }
 
         public NameFact GetKey(NameFact nameFact)
         {
@@ -115,9 +135,9 @@ public class NodeSharingNonEquivalentExpressionsTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            NameFact thisNameFact = null;
-            NameFact otherNameFact = null;
-            ReferenceFact referenceFact = null;
+            NameFact thisNameFact = null!;
+            NameFact otherNameFact = null!;
+            ReferenceFact referenceFact = null!;
 
             When()
                 .Match(() => thisNameFact, f => f.Name == "ThisName")
@@ -133,9 +153,9 @@ public class NodeSharingNonEquivalentExpressionsTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            NameFact thisNameFact = null;
-            NameFact otherNameFact = null;
-            ReferenceFact referenceFact = null;
+            NameFact thisNameFact = null!;
+            NameFact otherNameFact = null!;
+            ReferenceFact referenceFact = null!;
 
             When()
                 .Match(() => thisNameFact, f => f.Name == "ThisName")
@@ -151,9 +171,9 @@ public class NodeSharingNonEquivalentExpressionsTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            NameFact thisNameFact = null;
-            NameFact otherNameFact = null;
-            IEnumerable<ReferenceFact> referenceFacts = null;
+            NameFact thisNameFact = null!;
+            NameFact otherNameFact = null!;
+            IEnumerable<ReferenceFact> referenceFacts = null!;
 
             When()
                 .Match(() => thisNameFact, f => f.Name == "ThisName")
@@ -172,9 +192,9 @@ public class NodeSharingNonEquivalentExpressionsTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            NameFact thisNameFact = null;
-            NameFact otherNameFact = null;
-            IEnumerable<ReferenceFact> referenceFacts = null;
+            NameFact thisNameFact = null!;
+            NameFact otherNameFact = null!;
+            IEnumerable<ReferenceFact> referenceFacts = null!;
 
             When()
                 .Match(() => thisNameFact, f => f.Name == "ThisName")

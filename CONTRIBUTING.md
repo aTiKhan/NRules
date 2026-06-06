@@ -11,11 +11,11 @@ Contributions to NRules, whether new features or bug fixes, are welcome and are 
 - **Implementation.** Fork the repository, implement and test the change.
 - **Pull request.** Create a pull request on the `develop` branch of the repository to submit changes. Pull requests need to pass the CI build and follow coding standards. All pull requests should include accompanying unit tests to verify the work.
 - **Code review.** Some iteration may take place requiring updates to the pull request.
-- **Pull request acceptance.** The pull request will be accepted into the `develop` branch and pushed to `master` with the next release.
+- **Pull request acceptance.** The pull request will be accepted into the `develop` branch and pushed to `main` with the next release.
 
 ### Questions
 
-If you just want to ask a question about how to use NRules, instead of creating an issue, consider asking your question on [Stack Overflow](https://stackoverflow.com/questions/tagged/nrules), starting a discussion on GitHub [Discussions](https://github.com/NRules/NRules/discussions) or kicking off a conversation on the [Gitter Chat](https://gitter.im/NRules/NRules).
+If you just want to ask a question about how to use NRules, consider asking it on [Stack Overflow](https://stackoverflow.com/questions/tagged/nrules) or starting a discussion on GitHub [Discussions](https://github.com/NRules/NRules/discussions), instead of creating an issue.
 
 ## License
 
@@ -29,8 +29,12 @@ By contributing to NRules, you assert that:
 
 ### Development Environment
 
-- Visual Studio 2022 (with latest patches/updates).
-- [Sandcastle Help File Builder](https://github.com/EWSoftware/SHFB)
+#### Windows
+- Visual Studio 2022 or Visual Studio Code (full Visual Studio is required for Debugger Visualizer development)
+
+#### MacOS and Linux
+- PowerShell (necessary to run build scripts)
+- Visual Studio Code or JetBrains Rider
 
 ### Dependencies
 
@@ -43,14 +47,18 @@ Unit tests are written in xUnit and Moq.
 ### Coding Standards
 
 - NRules uses standard Microsoft .NET coding guidelines. See the [Framework Design Guidelines](https://msdn.microsoft.com/en-us/library/ms229042.aspx) for suggestions. 
-- Use four spaces for code indentation (no tabs).
+- Use four spaces for code indentation (no tabs). Use two spaces for indentation in csproj, props, xml and json files.
 - For private fields, use a camelCase notation, prefixing field names with an underscore.
 - Generally, use comment-free coding approach, where code is self-explanatory. Comments may be added for complex areas of code, and should explain "why" not "how".
 - Maintain clean code - no commented out sections, no dangling or inconsistent line breaks, ensure consistent indentation and bracing.
+- Don't use regions.
 - Treat compiler warnings as errors.
-- If you have ReSharper, make sure to address all warnings and errors that it produces.
+- If you have ReSharper/Rider, make sure to address all warnings and errors that it produces.
 - Be cognizant of performance-critical code.
 
 ### Documentation
 
-Public types and members must have XML documentation.
+API documentation and conceptual documentation are compiled into the project documentation site as part of the build process, using [DocFX](https://github.com/dotnet/docfx).
+
+- Public types and members must have XML documentation, so that it can be included into the API documentation. 
+- Conceptual documentation must be written in [CommonMark](https://commonmark.org/)-compliant markdown format. 

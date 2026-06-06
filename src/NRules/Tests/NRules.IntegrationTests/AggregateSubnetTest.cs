@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -21,9 +23,7 @@ public class AggregateSubnetTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        var calculatedFact = GetFiredFact<CalculatedFact>();
-        Assert.Equal("Valid Value 2", calculatedFact.Value);
+        Verify(x => x.Rule().Fired(Matched.Fact<CalculatedFact>(f => f.Value == "Valid Value 2")));
     }
 
     [Fact]
@@ -43,38 +43,39 @@ public class AggregateSubnetTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        var calculatedFact = GetFiredFact<CalculatedFact>();
-        Assert.Equal("Valid Value 2", calculatedFact.Value);
+        Verify(x => x.Rule().Fired(Matched.Fact<CalculatedFact>(f => f.Value == "Valid Value 2")));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
 
     public class FactType1
     {
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class FactType2
     {
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class CalculatedFact
     {
-        public string Value { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            FactType1 fact1 = null;
-            IEnumerable<FactType2> query = null;
-            CalculatedFact calculatedFact = null;
+            FactType1 fact1 = null!;
+            IEnumerable<FactType2> query = null!;
+            CalculatedFact calculatedFact = null!;
 
             When()
                 .Match(() => fact1)

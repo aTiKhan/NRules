@@ -2,11 +2,11 @@ using System.Xml;
 
 namespace NRules.Diagnostics.Dgml;
 
-internal class Setter
+internal class Setter(string property)
 {
-    public string Property { get; set; }
-    public string Value { get; set; }
-    public string Expression{ get; set; }
+    public string Property { get; } = property;
+    public string? Value { get; set; }
+    public string? Expression{ get; set; }
 
     public void WriteXml(XmlWriter writer)
     {

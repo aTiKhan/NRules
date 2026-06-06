@@ -41,7 +41,7 @@ public class Activation : IMatch
     internal Tuple Tuple { get; }
 
     internal bool IsEnqueued { get; set; }
-    internal bool HasFired { get; set; }
+    internal bool HasFired { get; private set; }
 
     internal void OnInsert()
     {
@@ -84,17 +84,12 @@ public class Activation : IMatch
         return matches;
     }
 
-    private class FactMatch : IFactMatch
+    private sealed class FactMatch(Declaration declaration) : IFactMatch
     {
-        public FactMatch(Declaration declaration)
-        {
-            Declaration = declaration;
-        }
-
-        public Declaration Declaration { get; }
-        public Type Type { get; private set; }
-        public object Value { get; private set; }
-        public IFactSource Source { get; private set; }
+        public Declaration Declaration { get; } = declaration;
+        public Type Type { get; private set; } = declaration.Type;
+        public object? Value { get; private set; }
+        public IFactSource? Source { get; private set; }
 
         public void SetFact(Fact fact)
         {

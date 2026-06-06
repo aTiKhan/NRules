@@ -8,12 +8,12 @@ namespace NRules.Json.Tests.Utilities;
 
 public static class ExpressionComparer
 {
-    public static bool AreEqual(Expression x, Expression y)
+    public static bool AreEqual(Expression? x, Expression? y)
     {
         return ExpressionEqual(x, y, null, null);
     }
 
-    private static bool ExpressionEqual(Expression x, Expression y, LambdaExpression rootX, LambdaExpression rootY)
+    private static bool ExpressionEqual(Expression? x, Expression? y, LambdaExpression? rootX, LambdaExpression? rootY)
     {
         if (ReferenceEquals(x, y))
             return true;
@@ -50,7 +50,7 @@ public static class ExpressionComparer
             case ParameterExpression px:
                 {
                     var py = (ParameterExpression)y;
-                    return rootX.Parameters.IndexOf(px) == rootY.Parameters.IndexOf(py) &&
+                    return rootX?.Parameters.IndexOf(px) == rootY?.Parameters.IndexOf(py) &&
                            px.Name == py.Name;
                 }
             case MethodCallExpression cx:
@@ -118,12 +118,13 @@ public static class ExpressionComparer
                         && CollectionsEqual(bx.Expressions, by.Expressions, rootX, rootY);
                 }
             default:
-                throw new NotImplementedException(x.ToString());
+                throw new NotImplementedException(
+                    $"Unsupported expression type. Type={x.GetType()}, Expression={x}");
         }
     }
 
     private static bool MemberBindingCollectionsEqual(IReadOnlyCollection<MemberBinding> x, IReadOnlyCollection<MemberBinding> y,
-        LambdaExpression rootX, LambdaExpression rootY)
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         return x.Count == y.Count
                && x.Zip(y, (first, second) => new { X = first, Y = second })
@@ -131,7 +132,7 @@ public static class ExpressionComparer
     }
 
     private static bool ElementInitCollectionsEqual(IReadOnlyCollection<ElementInit> x, IReadOnlyCollection<ElementInit> y,
-        LambdaExpression rootX, LambdaExpression rootY)
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         return x.Count == y.Count
                && x.Zip(y, (first, second) => new { X = first, Y = second })
@@ -139,22 +140,22 @@ public static class ExpressionComparer
     }
 
     private static bool CollectionsEqual(IReadOnlyCollection<Expression> x, IReadOnlyCollection<Expression> y,
-        LambdaExpression rootX, LambdaExpression rootY)
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         return x.Count == y.Count
                && x.Zip(y, (first, second) => new { X = first, Y = second })
                    .All(o => ExpressionEqual(o.X, o.Y, rootX, rootY));
     }
 
-    private static bool ElementInitsEqual(ElementInit x, ElementInit y, LambdaExpression rootX,
-        LambdaExpression rootY)
+    private static bool ElementInitsEqual(ElementInit x, ElementInit y, 
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         return Equals(x.AddMethod, y.AddMethod)
                && CollectionsEqual(x.Arguments, y.Arguments, rootX, rootY);
     }
 
-    private static bool MemberBindingsEqual(MemberBinding x, MemberBinding y, LambdaExpression rootX,
-        LambdaExpression rootY)
+    private static bool MemberBindingsEqual(MemberBinding x, MemberBinding y, 
+        LambdaExpression? rootX, LambdaExpression? rootY)
     {
         if (x.BindingType != y.BindingType)
             return false;
@@ -174,11 +175,12 @@ public static class ExpressionComparer
                 var mlby = (MemberListBinding)y;
                 return ElementInitCollectionsEqual(mlbx.Initializers, mlby.Initializers, rootX, rootY);
             default:
-                throw new ArgumentOutOfRangeException($"Unsupported binding type. BindingType={x.BindingType}");
+                throw new ArgumentOutOfRangeException(
+                    $"Unsupported binding type in member binding. BindingType={x.BindingType}, MemberBinding={x}");
         }
     }
 
-    private static bool MemberExpressionsEqual(MemberExpression x, MemberExpression y, LambdaExpression rootX, LambdaExpression rootY)
+    private static bool MemberExpressionsEqual(MemberExpression x, MemberExpression y, LambdaExpression? rootX, LambdaExpression? rootY)
     {
         if (x.Expression == null || y.Expression == null)
             return Equals(x.Member, y.Member);
@@ -205,23 +207,26 @@ public static class ExpressionComparer
             case ExpressionType.Modulo:
             case ExpressionType.Power:
             case ExpressionType.Conditional:
+            case ExpressionType.Call:
+            case ExpressionType.TypeAs:
                 return Equals(x.Member, y.Member) && ExpressionEqual(x.Expression, y.Expression, rootX, rootY);
             case ExpressionType.New:
-            case ExpressionType.Call:
                 return ExpressionEqual(x.Expression, y.Expression, rootX, rootY);
             default:
-                throw new NotImplementedException(x.ToString());
+                throw new NotImplementedException(
+                    $"Unsupported node type in member expression. NodeType={x.Expression.NodeType}, MemberExpression={x}");
         }
     }
 
-    private static object GetValueOfConstantExpression(MemberExpression mex)
+    private static object? GetValueOfConstantExpression(MemberExpression mex)
     {
-        var o = ((ConstantExpression)mex.Expression).Value;
+        var o = ((ConstantExpression?)mex.Expression)?.Value;
         return mex.Member switch
         {
             FieldInfo fi => fi.GetValue(o),
             PropertyInfo pi => pi.GetValue(o, null),
-            _ => throw new ArgumentException($"Unsupported member type. MemberType={mex.Member.GetType()}")
+            _ => throw new ArgumentException(
+                $"Unsupported member type in member expression. MemberType={mex.Member.GetType()}, MemberExpression={mex}")
         };
     }
 }

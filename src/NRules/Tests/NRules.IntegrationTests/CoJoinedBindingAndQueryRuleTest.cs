@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -20,8 +22,7 @@ public class CoJoinedBindingAndQueryRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal("Group1|0", GetFiredFact<IGrouping<string, FactType2>>().Key);
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Key == "Group1|0")));
     }
 
     [Fact]
@@ -38,8 +39,7 @@ public class CoJoinedBindingAndQueryRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal("Group1|1", GetFiredFact<IGrouping<string, FactType2>>().Key);
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Key == "Group1|1")));
     }
 
     [Fact]
@@ -56,8 +56,7 @@ public class CoJoinedBindingAndQueryRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal("Group1|1", GetFiredFact<IGrouping<string, FactType2>>().Key);
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Key == "Group1|1")));
     }
 
     [Fact]
@@ -77,8 +76,7 @@ public class CoJoinedBindingAndQueryRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal("Group1|2", GetFiredFact<IGrouping<string, FactType2>>().Key);
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Key == "Group1|2")));
     }
 
     [Fact]
@@ -98,8 +96,7 @@ public class CoJoinedBindingAndQueryRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal("Group2|1", GetFiredFact<IGrouping<string, FactType2>>().Key);
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Key == "Group2|1")));
     }
 
     [Fact]
@@ -118,8 +115,7 @@ public class CoJoinedBindingAndQueryRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal("Group1|0", GetFiredFact<IGrouping<string, FactType2>>().Key);
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Key == "Group1|0")));
     }
 
     [Fact]
@@ -138,31 +134,33 @@ public class CoJoinedBindingAndQueryRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
 
     public class FactType1
     {
-        public string Value { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
     public class FactType2
     {
-        public string GroupKey { get; set; }
+        [NotNull]
+        public string? GroupKey { get; set; }
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            FactType1 fact = null;
-            IEnumerable<FactType1> collection = null;
-            IGrouping<string, FactType2> group = null;
+            FactType1 fact = null!;
+            IEnumerable<FactType1> collection = null!;
+            IGrouping<string, FactType2> group = null!;
 
             When()
                 .Query(() => collection, q => q

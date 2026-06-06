@@ -3,18 +3,13 @@ using System.Xml;
 
 namespace NRules.Diagnostics.Dgml;
 
-internal class Style
+internal class Style(string targetType)
 {
-    public Style(string targetType)
-    {
-        TargetType = targetType;
-    }
-
-    public string TargetType { get; }
-    public string GroupLabel { get; set; }
-    public string ValueLabel { get; set; }
-    public List<Condition> Conditions { get; set; } = new();
-    public List<Setter> Setters { get; set; } = new();
+    public string TargetType { get; } = targetType;
+    public string? GroupLabel { get; set; }
+    public string? ValueLabel { get; set; }
+    public List<Condition> Conditions { get; } = new();
+    public List<Setter> Setters { get; } = new();
 
     public Style HasCategory(string category)
     {
@@ -23,14 +18,14 @@ internal class Style
 
     public Style Condition(string expression)
     {
-        var condition = new Condition {Expression = expression};
+        var condition = new Condition(expression);
         Conditions.Add(condition);
         return this;
     }
 
-    public Style Setter(string property, string value = null, string expression = null)
+    public Style Setter(string property, string? value = null, string? expression = null)
     {
-        var setter = new Setter {Property = property, Value = value, Expression = expression};
+        var setter = new Setter(property) { Value = value, Expression = expression };
         Setters.Add(setter);
         return this;
     }

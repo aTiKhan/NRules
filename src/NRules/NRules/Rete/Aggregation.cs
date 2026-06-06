@@ -6,7 +6,7 @@ namespace NRules.Rete;
 internal class Aggregation
 {
     private readonly List<AggregateList> _aggregateLists = new();
-    private AggregateList _currentList;
+    private AggregateList? _currentList;
 
     public List<AggregateList> AggregateLists => _aggregateLists;
     public int Count { get; private set; }
@@ -32,7 +32,7 @@ internal class Aggregation
         Count++;
     }
 
-    public void Remove(Tuple tuple, IEnumerable<Fact> aggregateFacts)
+    public void Remove(Tuple tuple, IReadOnlyCollection<Fact> aggregateFacts)
     {
         var list = GetList(AggregationAction.Removed);
         foreach (var aggregateFact in aggregateFacts)
@@ -53,12 +53,7 @@ internal class Aggregation
     }
 }
 
-internal class AggregateList : TupleFactList
+internal class AggregateList(AggregationAction action) : TupleFactList
 {
-    public AggregationAction Action { get; }
-
-    public AggregateList(AggregationAction action)
-    {
-        Action = action;
-    }
+    public AggregationAction Action { get; } = action;
 }

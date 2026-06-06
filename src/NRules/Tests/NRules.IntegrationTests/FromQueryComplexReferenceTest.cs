@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -16,7 +18,7 @@ public class FromQueryComplexReferenceTest : BaseRulesTestFixture
         var keys = new[] { 1, 1, 2, 2 };
         var facts = values.Zip(keys, (v, k) => new Fact { Key = k, Value = v });
 
-        var key = new Key { Value = 1 };
+        var key = new KeyFact { Value = 1 };
 
         Session.Insert(key);
         Session.InsertAll(facts);
@@ -25,7 +27,7 @@ public class FromQueryComplexReferenceTest : BaseRulesTestFixture
         Session.Fire();
 
         // Assert
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
     }
 
     [Fact]
@@ -36,7 +38,7 @@ public class FromQueryComplexReferenceTest : BaseRulesTestFixture
         var keys = new[] { 1, 1, 2, 2 };
         var facts = values.Zip(keys, (v, k) => new Fact { Key = k, Value = v });
 
-        var key = new Key { Value = 3 };
+        var key = new KeyFact { Value = 3 };
 
         Session.Insert(key);
         Session.InsertAll(facts);
@@ -45,10 +47,10 @@ public class FromQueryComplexReferenceTest : BaseRulesTestFixture
         Session.Fire();
 
         // Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<FromQueryComplexReferenceRule>();
     }
@@ -56,10 +58,11 @@ public class FromQueryComplexReferenceTest : BaseRulesTestFixture
     public class Fact
     {
         public int Key { get; set; }
-        public string Value { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
-    public class Key
+    public class KeyFact
     {
         public int Value { get; set; }
     }
@@ -68,9 +71,9 @@ public class FromQueryComplexReferenceTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            IEnumerable<Fact> factsAll = null;
-            Key key = null;
-            IGrouping<string, Fact> factsFilteredGrouped = null;
+            IEnumerable<Fact> factsAll = null!;
+            KeyFact key = null!;
+            IGrouping<string, Fact> factsFilteredGrouped = null!;
 
             When()
                 .Query(() => factsAll, q => q

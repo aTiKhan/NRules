@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -27,17 +29,24 @@ public class FromQueryDoubleReferenceTest : BaseRulesTestFixture
         Session.Fire();
 
         // Assert
-        Verify.Rule().FiredTimes(1);
+        IEnumerable<Fact> factsAllActual = null!;
+        IEnumerable<Fact> factsOneActual = null!;
+        IEnumerable<Fact> factsTwoActual = null!;
+        IEnumerable<Fact> factsOneTwoActual = null!;
+        Verify(x => x.Rule().Fired(
+            Matched.Fact<IEnumerable<Fact>>()
+                .Callback(f => factsAllActual = f),
+            Matched.Fact<IEnumerable<Fact>>()
+                .Callback(f => factsOneActual = f),
+            Matched.Fact<IEnumerable<Fact>>()
+                .Callback(f => factsTwoActual = f),
+            Matched.Fact<IEnumerable<Fact>>()
+                .Callback(f => factsOneTwoActual = f)));
 
-        var firedFacts = GetFiredFacts<IEnumerable<Fact>>().ToArray();
         var factsAllExpected = facts;
         var factsOneExpected = facts.Where(f => f.Key == 1).ToArray();
         var factsTwoExpected = facts.Where(f => f.Key == 2).ToArray();
         var factsOneTwoExpected = factsOneExpected.Concat(factsTwoExpected).ToArray();
-        var factsAllActual = firedFacts.Single(f => f.Count() == 6).ToArray();
-        var factsOneActual = firedFacts.Single(f => f.Count() == 2).ToArray();
-        var factsTwoActual = firedFacts.Single(f => f.Count() == 3).ToArray();
-        var factsOneTwoActual = firedFacts.Single(f => f.Count() == 5).ToArray();
 
         Assert.Equal(factsAllExpected, factsAllActual);
         Assert.Equal(factsOneExpected, factsOneActual);
@@ -45,7 +54,7 @@ public class FromQueryDoubleReferenceTest : BaseRulesTestFixture
         Assert.Equal(factsOneTwoExpected, factsOneTwoActual);
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<FromQueryDoubleReferenceRule>();
     }
@@ -53,17 +62,18 @@ public class FromQueryDoubleReferenceTest : BaseRulesTestFixture
     public class Fact
     {
         public int Key { get; set; }
-        public string Value { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
     public class FromQueryDoubleReferenceRule : Rule
     {
         public override void Define()
         {
-            IEnumerable<Fact> factsAll = null;
-            IEnumerable<Fact> factsOne = null;
-            IEnumerable<Fact> factsTwo = null;
-            IEnumerable<Fact> factsOneTwo = null;
+            IEnumerable<Fact> factsAll = null!;
+            IEnumerable<Fact> factsOne = null!;
+            IEnumerable<Fact> factsTwo = null!;
+            IEnumerable<Fact> factsOneTwo = null!;
 
             When()
                 .Query(() => factsAll, q => q

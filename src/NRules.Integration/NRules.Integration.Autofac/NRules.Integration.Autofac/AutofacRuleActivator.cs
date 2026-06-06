@@ -13,11 +13,16 @@ public class AutofacRuleActivator : IRuleActivator
 {
     private readonly ILifetimeScope _container;
 
+    /// <summary>
+    /// Creates a rule activator that uses the specified container.
+    /// </summary>
+    /// <param name="container">Container to use to create rule instances.</param>
     public AutofacRuleActivator(ILifetimeScope container)
     {
         _container = container;
     }
 
+    /// <inheritdoc cref="IRuleActivator.Activate"/>
     public IEnumerable<Rule> Activate(Type type)
     {
         if (_container.IsRegistered(type))

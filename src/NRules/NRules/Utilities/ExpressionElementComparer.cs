@@ -5,14 +5,9 @@ using NRules.RuleModel;
 
 namespace NRules.Utilities;
 
-internal class ExpressionElementComparer
+internal class ExpressionElementComparer(RuleCompilerOptions compilerOptions)
 {
-    private readonly ExpressionComparer _expressionComparer;
-
-    public ExpressionElementComparer(RuleCompilerOptions compilerOptions)
-    {
-        _expressionComparer = new ExpressionComparer(compilerOptions);
-    }
+    private readonly ExpressionComparer _expressionComparer = new(compilerOptions);
 
     public bool AreEqual(NamedExpressionElement first, NamedExpressionElement second)
     {
@@ -27,8 +22,8 @@ internal class ExpressionElementComparer
     }
 
     public bool AreEqual(
-        List<Declaration> firstDeclarations, IEnumerable<NamedExpressionElement> first, 
-        List<Declaration> secondDeclarations, IEnumerable<NamedExpressionElement> second)
+        List<Declaration> firstDeclarations, IReadOnlyCollection<NamedExpressionElement> first, 
+        List<Declaration> secondDeclarations, IReadOnlyCollection<NamedExpressionElement> second)
     {
         using var enumerator1 = first.GetEnumerator();
         using var enumerator2 = second.GetEnumerator();
@@ -40,9 +35,9 @@ internal class ExpressionElementComparer
 
             if (hasNext1 && hasNext2)
             {
-                if (!AreParameterPositionsEqual(firstDeclarations, enumerator1.Current, secondDeclarations, enumerator2.Current))
+                if (!AreParameterPositionsEqual(firstDeclarations, enumerator1.Current!, secondDeclarations, enumerator2.Current!))
                     return false;
-                if (!AreEqual(enumerator1.Current, enumerator2.Current))
+                if (!AreEqual(enumerator1.Current!, enumerator2.Current!))
                     return false;
             }
             else if (hasNext1 || hasNext2)
@@ -59,17 +54,17 @@ internal class ExpressionElementComparer
     }
     
     public bool AreEqual(
-        List<Declaration> firstDeclarations, IEnumerable<ExpressionElement> x,
-        List<Declaration> secondDeclarations, IEnumerable<ExpressionElement> y)
+        List<Declaration> firstDeclarations, IReadOnlyCollection<ExpressionElement> x,
+        List<Declaration> secondDeclarations, IReadOnlyCollection<ExpressionElement> y)
     {
-        return x.Count() == y.Count()
+        return x.Count == y.Count
                && x.Zip(y, (first, second) => new {X = first, Y = second})
                    .All(o => 
                        AreParameterPositionsEqual(firstDeclarations, o.X, secondDeclarations, o.Y) && 
                        AreEqual(o.X, o.Y));
     }
 
-    private bool AreParameterPositionsEqual(
+    private static bool AreParameterPositionsEqual(
         List<Declaration> firstDeclarations, ExpressionElement firstElement, 
         List<Declaration> secondDeclarations, ExpressionElement secondElement)
     {

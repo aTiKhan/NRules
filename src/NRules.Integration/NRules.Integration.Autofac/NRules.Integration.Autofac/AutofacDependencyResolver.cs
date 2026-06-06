@@ -11,11 +11,16 @@ public class AutofacDependencyResolver : IDependencyResolver
 {
     private readonly ILifetimeScope _container;
 
+    /// <summary>
+    /// Creates a dependency resolver that uses the specified container.
+    /// </summary>
+    /// <param name="container">Container to use to resolve dependencies.</param>
     public AutofacDependencyResolver(ILifetimeScope container)
     {
         _container = container;
     }
 
+    /// <inheritdoc cref="IDependencyResolver.Resolve"/>
     public object Resolve(IResolutionContext context, Type serviceType)
     {
         return _container.Resolve(serviceType);

@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
 using NRules.RuleModel;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -15,10 +17,10 @@ public class BindingEvaluationExceptionTest : BaseRulesTestFixture
     public void Insert_ErrorInBindingNoErrorHandler_Throws()
     {
         //Arrange
-        GetRuleInstance<TestRule>().Binding = ThrowBinding;
+        _testRule.Binding = ThrowBinding;
 
-        Expression expression = null;
-        IList<IFact> facts = null;
+        Expression expression = null!;
+        IList<IFact> facts = null!;
         Session.Events.LhsExpressionFailedEvent += (sender, args) => expression = args.Expression;
         Session.Events.LhsExpressionFailedEvent += (sender, args) => facts = args.Facts.ToList();
 
@@ -27,7 +29,7 @@ public class BindingEvaluationExceptionTest : BaseRulesTestFixture
         //Act - Assert
         var ex = Assert.Throws<RuleLhsExpressionEvaluationException>(() => Session.Insert(fact));
         Assert.NotNull(expression);
-        Assert.Equal(1, facts.Count);
+        Assert.Single(facts);
         Assert.Same(fact, facts.First().Value);
         Assert.IsType<InvalidOperationException>(ex.InnerException);
     }
@@ -36,7 +38,7 @@ public class BindingEvaluationExceptionTest : BaseRulesTestFixture
     public void Fire_FailedAssert_DoesNotFire()
     {
         //Arrange
-        GetRuleInstance<TestRule>().Binding = ThrowBinding;
+        _testRule.Binding = ThrowBinding;
 
         Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
@@ -48,21 +50,21 @@ public class BindingEvaluationExceptionTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
     public void Fire_FailedAssertThenAssertAnother_Fires()
     {
         //Arrange
-        GetRuleInstance<TestRule>().Binding = ThrowBinding;
+        _testRule.Binding = ThrowBinding;
 
         Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
         var fact1 = new FactType { TestProperty = "Valid value" };
         Session.Insert(fact1);
 
-        GetRuleInstance<TestRule>().Binding = SuccessfulBinding;
+        _testRule.Binding = SuccessfulBinding;
 
         var fact2 = new FactType { TestProperty = "Valid value" };
         Session.Insert(fact2);
@@ -71,21 +73,21 @@ public class BindingEvaluationExceptionTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
     public void Fire_FailedAssertThenUpdate_Fires()
     {
         //Arrange
-        GetRuleInstance<TestRule>().Binding = ThrowBinding;
+        _testRule.Binding = ThrowBinding;
 
         Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
         var fact = new FactType { TestProperty = "Valid value" };
 
         Session.Insert(fact);
-        GetRuleInstance<TestRule>().Binding = SuccessfulBinding;
+        _testRule.Binding = SuccessfulBinding;
 
         Session.Update(fact);
 
@@ -93,21 +95,21 @@ public class BindingEvaluationExceptionTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
     public void Fire_FailedAssertThenUpdateThenRetract_DoesNotFire()
     {
         //Arrange
-        GetRuleInstance<TestRule>().Binding = ThrowBinding;
+        _testRule.Binding = ThrowBinding;
 
         Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
         var fact = new FactType { TestProperty = "Valid value" };
 
         Session.Insert(fact);
-        GetRuleInstance<TestRule>().Binding = SuccessfulBinding;
+        _testRule.Binding = SuccessfulBinding;
 
         Session.Update(fact);
         Session.Retract(fact);
@@ -116,21 +118,21 @@ public class BindingEvaluationExceptionTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
     public void Fire_FailedAssertThenRetract_DoesNotFire()
     {
         //Arrange
-        GetRuleInstance<TestRule>().Binding = ThrowBinding;
+        _testRule.Binding = ThrowBinding;
 
         Session.Events.LhsExpressionFailedEvent += (sender, args) => args.IsHandled = true;
 
         var fact = new FactType { TestProperty = "Valid value" };
 
         Session.Insert(fact);
-        GetRuleInstance<TestRule>().Binding = SuccessfulBinding;
+        _testRule.Binding = SuccessfulBinding;
 
         Session.Retract(fact);
 
@@ -138,20 +140,23 @@ public class BindingEvaluationExceptionTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
-        setup.Rule<TestRule>();
+        _testRule = new TestRule();
+        setup.Rule(_testRule);
     }
 
     private static readonly Func<FactType, string> SuccessfulBinding = f => "value";
     private static readonly Func<FactType, string> ThrowBinding = f => throw new InvalidOperationException("Binding failed");
+    private TestRule _testRule = null!;
 
     public class FactType
     {
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class TestRule : Rule
@@ -160,8 +165,8 @@ public class BindingEvaluationExceptionTest : BaseRulesTestFixture
 
         public override void Define()
         {
-            FactType fact = null;
-            string binding = null;
+            FactType fact = null!;
+            string binding = null!;
 
             When()
                 .Match(() => fact, f => f.TestProperty.StartsWith("Valid"))

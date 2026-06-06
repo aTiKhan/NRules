@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using NRules.Fluent;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
@@ -9,12 +10,7 @@ namespace NRules.IntegrationTests;
 
 public class RuleMetadataTest
 {
-    private readonly RuleRepository _repository;
-
-    public RuleMetadataTest()
-    {
-        _repository = new RuleRepository();
-    }
+    private readonly RuleRepository _repository = new();
 
     [Fact]
     public void Property_RuleClrType_Same()
@@ -220,14 +216,15 @@ public class RuleMetadataTest
 
     public class FactType
     {
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class RuleWithoutMetadata : Rule
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             When()
                 .Match(() => fact, f => f.TestProperty.StartsWith("Valid"));
@@ -249,7 +246,7 @@ public class RuleMetadataTest
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             When()
                 .Match(() => fact, f => f.TestProperty.StartsWith("Valid"));
@@ -264,7 +261,7 @@ public class RuleMetadataTest
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             Name("Programmatic name");
             Priority(1000);
@@ -282,7 +279,7 @@ public class RuleMetadataTest
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             When()
                 .Match(() => fact, f => f.TestProperty.StartsWith("Valid"));
@@ -298,7 +295,7 @@ public class RuleMetadataTest
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             When()
                 .Match(() => fact, f => f.TestProperty.StartsWith("Valid"));

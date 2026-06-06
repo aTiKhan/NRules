@@ -3,22 +3,17 @@ using System.Xml;
 
 namespace NRules.Diagnostics.Dgml;
 
-internal class Node
+internal class Node(string id)
 {
-    public Node(string id)
-    {
-        Id = id;
-    }
-
-    public string Id { get; }
-    public string Label { get; set; }
-    public string Category { get; set; }
-    public string Group { get; set; }
-    public string Description { get; set; }
-    public string Reference { get; set; }
-    public string Background { get; set; }
-    public string Foreground { get; set; }
-    public string FontSize { get; set; }
+    public string Id { get; } = id;
+    public string? Label { get; set; }
+    public string? Category { get; set; }
+    public string? Group { get; set; }
+    public string? Description { get; set; }
+    public string? Reference { get; set; }
+    public string? Background { get; set; }
+    public string? Foreground { get; set; }
+    public string? FontSize { get; set; }
     public Dictionary<string, object> Properties { get; } = new();
 
     public void WriteXml(XmlWriter writer)

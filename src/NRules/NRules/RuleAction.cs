@@ -11,31 +11,23 @@ internal interface IRuleAction
 {
     Expression Expression { get; }
     ActionTrigger Trigger { get; }
-    object[] GetArguments(IActionContext actionContext);
+    object?[] GetArguments(IActionContext actionContext);
     void Invoke(IExecutionContext executionContext, IActionContext actionContext);
 }
 
-internal class RuleAction : IRuleAction
+internal class RuleAction(
+    LambdaExpression expression,
+    Action<IContext, Tuple> compiledExpression,
+    IArgumentMap argumentMap,
+    ActionTrigger actionTrigger)
+    : IRuleAction
 {
-    private readonly LambdaExpression _expression;
-    private readonly Action<IContext, Tuple> _compiledExpression;
-    private readonly IArgumentMap _argumentMap;
+    public Expression Expression => expression;
+    public ActionTrigger Trigger { get; } = actionTrigger;
 
-    public RuleAction(LambdaExpression expression, Action<IContext, Tuple> compiledExpression,
-        IArgumentMap argumentMap, ActionTrigger actionTrigger)
+    public object?[] GetArguments(IActionContext actionContext)
     {
-        _expression = expression;
-        Trigger = actionTrigger;
-        _compiledExpression = compiledExpression;
-        _argumentMap = argumentMap;
-    }
-
-    public Expression Expression => _expression;
-    public ActionTrigger Trigger { get; }
-
-    public object[] GetArguments(IActionContext actionContext)
-    {
-        var arguments = new ActivationExpressionArguments(_argumentMap, actionContext.Activation);
+        var arguments = new ActivationExpressionArguments(argumentMap, actionContext.Activation);
         return arguments.GetValues();
     }
 
@@ -44,16 +36,16 @@ internal class RuleAction : IRuleAction
         var activation = actionContext.Activation;
         var tuple = activation.Tuple;
 
-        Exception exception = null;
+        Exception? exception = null;
         try
         {
-            _compiledExpression.Invoke(actionContext, tuple);
+            compiledExpression.Invoke(actionContext, tuple);
         }
         catch (Exception e)
         {
             exception = e;
             bool isHandled = false;
-            executionContext.EventAggregator.RaiseRhsExpressionFailed(executionContext.Session, e, _expression, _argumentMap, actionContext.Activation, ref isHandled);
+            executionContext.EventAggregator.RaiseRhsExpressionFailed(executionContext.Session, e, expression, argumentMap, actionContext.Activation, ref isHandled);
             if (!isHandled)
             {
                 throw;
@@ -62,32 +54,24 @@ internal class RuleAction : IRuleAction
         finally
         {
             if (executionContext.EventAggregator.TraceEnabled)
-                executionContext.EventAggregator.RaiseRhsExpressionEvaluated(executionContext.Session, exception, _expression, _argumentMap, actionContext.Activation);
+                executionContext.EventAggregator.RaiseRhsExpressionEvaluated(executionContext.Session, exception, expression, argumentMap, actionContext.Activation);
         }
     }
 }
 
-internal class RuleActionWithDependencies : IRuleAction
+internal class RuleActionWithDependencies(
+    LambdaExpression expression,
+    Action<IContext, Tuple, IDependencyResolver, IResolutionContext> compiledExpression,
+    IArgumentMap argumentMap,
+    ActionTrigger actionTrigger)
+    : IRuleAction
 {
-    private readonly LambdaExpression _expression;
-    private readonly Action<IContext, Tuple, IDependencyResolver, IResolutionContext> _compiledExpression;
-    private readonly IArgumentMap _argumentMap;
+    public Expression Expression => expression;
+    public ActionTrigger Trigger { get; } = actionTrigger;
 
-    public RuleActionWithDependencies(LambdaExpression expression, Action<IContext, Tuple, IDependencyResolver, IResolutionContext> compiledExpression,
-        IArgumentMap argumentMap, ActionTrigger actionTrigger)
+    public object?[] GetArguments(IActionContext actionContext)
     {
-        _expression = expression;
-        Trigger = actionTrigger;
-        _compiledExpression = compiledExpression;
-        _argumentMap = argumentMap;
-    }
-
-    public Expression Expression => _expression;
-    public ActionTrigger Trigger { get; }
-    
-    public object[] GetArguments(IActionContext actionContext)
-    {
-        var arguments = new ActivationExpressionArguments(_argumentMap, actionContext.Activation);
+        var arguments = new ActivationExpressionArguments(argumentMap, actionContext.Activation);
         return arguments.GetValues();
     }
 
@@ -100,16 +84,16 @@ internal class RuleActionWithDependencies : IRuleAction
         var dependencyResolver = executionContext.Session.DependencyResolver;
         var resolutionContext = new ResolutionContext(executionContext.Session, compiledRule.Definition);
 
-        Exception exception = null;
+        Exception? exception = null;
         try
         {
-            _compiledExpression.Invoke(actionContext, tuple, dependencyResolver, resolutionContext);
+            compiledExpression.Invoke(actionContext, tuple, dependencyResolver, resolutionContext);
         }
         catch (Exception e)
         {
             exception = e;
             bool isHandled = false;
-            executionContext.EventAggregator.RaiseRhsExpressionFailed(executionContext.Session, e, _expression, _argumentMap, actionContext.Activation, ref isHandled);
+            executionContext.EventAggregator.RaiseRhsExpressionFailed(executionContext.Session, e, expression, argumentMap, actionContext.Activation, ref isHandled);
             if (!isHandled)
             {
                 throw;
@@ -118,7 +102,7 @@ internal class RuleActionWithDependencies : IRuleAction
         finally
         {
             if (executionContext.EventAggregator.TraceEnabled)
-                executionContext.EventAggregator.RaiseRhsExpressionEvaluated(executionContext.Session, exception, _expression, _argumentMap, actionContext.Activation);
+                executionContext.EventAggregator.RaiseRhsExpressionEvaluated(executionContext.Session, exception, expression, argumentMap, actionContext.Activation);
         }
     }
 }

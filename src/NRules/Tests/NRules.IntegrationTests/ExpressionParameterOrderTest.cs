@@ -1,5 +1,6 @@
 ﻿using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -19,7 +20,7 @@ public class ExpressionParameterOrderTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -34,10 +35,10 @@ public class ExpressionParameterOrderTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
@@ -62,10 +63,10 @@ public class ExpressionParameterOrderTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            FactType0 f0 = null;
-            FactType1 f1 = null;
-            FactType2 f2 = null;
-            FactType3 f3 = null;
+            FactType0 f0 = null!;
+            FactType1 f1 = null!;
+            FactType2 f2 = null!;
+            FactType3 f3 = null!;
 
             When()
                 .Or(x => x

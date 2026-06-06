@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Linq.Expressions;
 using NRules.Aggregators;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
 using NRules.RuleModel;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -19,7 +21,7 @@ public class CustomFirstAggregatorTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -38,9 +40,11 @@ public class CustomFirstAggregatorTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
-        Assert.Equal("Valid Value 1", GetFiredFact<FactType>(0).TestProperty);
-        Assert.Equal("Valid Value 4", GetFiredFact<FactType>(1).TestProperty);
+        Verify(s =>
+        {
+            s.Rule().Fired(Matched.Fact<FactType>(f => f.TestProperty == "Valid Value 1"));
+            s.Rule().Fired(Matched.Fact<FactType>(f => f.TestProperty == "Valid Value 4"));
+        });
     }
 
     [Fact]
@@ -59,26 +63,30 @@ public class CustomFirstAggregatorTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal("Valid Value 2", GetFiredFact<FactType>().TestProperty);
+        Verify(s =>
+        {
+            s.Rule().Fired(Matched.Fact<FactType>(f => f.TestProperty == "Valid Value 2"));
+        });
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
 
     public class FactType
     {
-        public string GroupProperty { get; set; }
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? GroupProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            FactType first = null;
+            FactType first = null!;
 
             When()
                 .Query(() => first, q => q
@@ -95,7 +103,7 @@ public static class FirstQueryExtensions
 {
     public static IQuery<TSource> First<TSource>(this IQuery<IEnumerable<TSource>> source)
     {
-        var expressions = new List<KeyValuePair<string, LambdaExpression>>();
+        var expressions = Array.Empty<KeyValuePair<string, LambdaExpression>>();
         source.Builder.Aggregate<IEnumerable<TSource>, TSource>("First", expressions, typeof(CustomFirstAggregatorFactory));
         return new QueryExpression<TSource>(source.Builder);
     }
@@ -103,9 +111,9 @@ public static class FirstQueryExtensions
 
 internal class CustomFirstAggregatorFactory : IAggregatorFactory
 {
-    private Func<IAggregator> _factory;
-
-    public void Compile(AggregateElement element, IEnumerable<IAggregateExpression> compiledExpressions)
+    private Func<IAggregator>? _factory;
+    
+    public void Compile(AggregateElement element, IReadOnlyCollection<IAggregateExpression> compiledExpressions)
     {
         var elementType = element.ResultType;
         var aggregatorType = typeof(CustomFirstAggregator<>).MakeGenericType(elementType);
@@ -113,9 +121,9 @@ internal class CustomFirstAggregatorFactory : IAggregatorFactory
         _factory = factoryExpression.Compile();
     }
 
-    public IAggregator Create()
+    public IAggregator Create(AggregationContext context)
     {
-        return _factory();
+        return _factory!();
     }
 }
 
@@ -123,45 +131,45 @@ public class CustomFirstAggregator<TElement> : IAggregator
 {
     private readonly Dictionary<object, TElement> _firstElements = new();
 
-    public IEnumerable<AggregationResult> Add(AggregationContext context, ITuple tuple, IEnumerable<IFact> facts)
+    public IReadOnlyCollection<AggregationResult> Add(AggregationContext context, ITuple tuple, IReadOnlyCollection<IFact> facts)
     {
         var results = new List<AggregationResult>();
         foreach (var fact in facts)
         {
-            var collection = (IEnumerable<TElement>)fact.Value;
+            var collection = (IEnumerable<TElement>)fact.Value!;
             foreach (var value in collection)
             {
                 _firstElements[fact] = value;
-                results.Add(AggregationResult.Added(value, Enumerable.Repeat(fact, 1)));
+                results.Add(AggregationResult.Added(value!, Enumerable.Repeat(fact, 1)));
                 break;
             }
         }
         return results;
     }
 
-    public IEnumerable<AggregationResult> Modify(AggregationContext context, ITuple tuple, IEnumerable<IFact> facts)
+    public IReadOnlyCollection<AggregationResult> Modify(AggregationContext context, ITuple tuple, IReadOnlyCollection<IFact> facts)
     {
         var results = new List<AggregationResult>();
         foreach (var fact in facts)
         {
-            var collection = (IEnumerable<TElement>)fact.Value;
+            var collection = (IEnumerable<TElement>)fact.Value!;
             foreach (var value in collection)
             {
                 if (_firstElements.TryGetValue(fact, out var oldFirst))
                 {
                     if (Equals(oldFirst, value))
                     {
-                        results.Add(AggregationResult.Modified(value, value, Enumerable.Repeat(fact, 1)));
+                        results.Add(AggregationResult.Modified(value!, value!, Enumerable.Repeat(fact, 1)));
                     }
                     else
                     {
-                        results.Add(AggregationResult.Removed(oldFirst));
-                        results.Add(AggregationResult.Added(value, Enumerable.Repeat(fact, 1)));
+                        results.Add(AggregationResult.Removed(oldFirst!));
+                        results.Add(AggregationResult.Added(value!, Enumerable.Repeat(fact, 1)));
                     }
                 }
                 else
                 {
-                    results.Add(AggregationResult.Added(value, Enumerable.Repeat(fact, 1)));
+                    results.Add(AggregationResult.Added(value!, Enumerable.Repeat(fact, 1)));
                 }
                 _firstElements[fact] = value;
                 break;
@@ -170,14 +178,14 @@ public class CustomFirstAggregator<TElement> : IAggregator
         return results;
     }
 
-    public IEnumerable<AggregationResult> Remove(AggregationContext context, ITuple tuple, IEnumerable<IFact> facts)
+    public IReadOnlyCollection<AggregationResult> Remove(AggregationContext context, ITuple tuple, IReadOnlyCollection<IFact> facts)
     {
         var results = new List<AggregationResult>();
         foreach (var fact in facts)
         {
             if (_firstElements.TryGetValue(fact, out var oldFirst))
             {
-                results.Add(AggregationResult.Removed(oldFirst));
+                results.Add(AggregationResult.Removed(oldFirst!));
                 _firstElements.Remove(fact);
             }
         }

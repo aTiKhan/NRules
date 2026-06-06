@@ -2,6 +2,7 @@
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
 using NRules.RuleModel;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -381,7 +382,7 @@ public class ActionTriggerRepeatableTest : BaseRulesTestFixture
         Assert.Equal(1, _unmatchActionCount);
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
@@ -395,7 +396,7 @@ public class ActionTriggerRepeatableTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             When()
                 .Match(() => fact);
@@ -786,7 +787,7 @@ public class ActionTriggerNonRepeatableTest : BaseRulesTestFixture
         Assert.Equal(1, _unmatchActionCount);
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
@@ -801,7 +802,7 @@ public class ActionTriggerNonRepeatableTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             When()
                 .Match(() => fact);
@@ -1170,7 +1171,7 @@ public class ActionTriggerNoUpdateRepeatableTest : BaseRulesTestFixture
         Assert.Equal(1, _unmatchActionCount);
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
@@ -1184,7 +1185,7 @@ public class ActionTriggerNoUpdateRepeatableTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             When()
                 .Match(() => fact);
@@ -1552,7 +1553,7 @@ public class ActionTriggerNoUpdateNonRepeatableTest : BaseRulesTestFixture
         Assert.Equal(1, _unmatchActionCount);
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
@@ -1567,7 +1568,7 @@ public class ActionTriggerNoUpdateNonRepeatableTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            FactType fact = null;
+            FactType fact = null!;
 
             When()
                 .Match(() => fact);

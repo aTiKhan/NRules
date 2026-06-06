@@ -3,6 +3,10 @@ using NRules.RuleModel;
 
 namespace NRules.Fluent.Dsl;
 
+/// <summary>
+/// Extension methods on <see cref="IContext"/> to simplify working with the rules engine
+/// from the rule actions.
+/// </summary>
 public static class ContextExtensions
 {
     /// <summary>
@@ -13,6 +17,7 @@ public static class ContextExtensions
     /// <param name="fact">Existing fact to update.</param>
     /// <param name="updateAction">Action to apply to the fact.</param>
     public static void Update<T>(this IContext context, T fact, Action<T> updateAction)
+        where T : notnull
     {
         updateAction(fact);
         context.Update(fact);

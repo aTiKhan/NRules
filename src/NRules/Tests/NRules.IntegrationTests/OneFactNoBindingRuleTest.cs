@@ -1,14 +1,18 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
 using NRules.RuleModel;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
 
 public class OneFactNoBindingRuleTest : BaseRulesTestFixture
 {
+    private TestRule _testRule = null!;
+
     [Fact]
     public void Fire_OneMatchingFact_FiresOnce()
     {
@@ -20,7 +24,7 @@ public class OneFactNoBindingRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -30,8 +34,8 @@ public class OneFactNoBindingRuleTest : BaseRulesTestFixture
         var fact = new FactType { TestProperty = "Valid Value 1" };
         Session.Insert(fact);
 
-        IFactMatch[] matches = null;
-        GetRuleInstance<TestRule>().Action = ctx =>
+        IFactMatch[]? matches = null;
+        _testRule.Action = ctx =>
         {
             matches = ctx.Match.Facts.ToArray();
         };
@@ -40,19 +44,22 @@ public class OneFactNoBindingRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
+        Assert.NotNull(matches);
         Assert.Single(matches);
         Assert.Same(fact, matches[0].Value);
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
-        setup.Rule<TestRule>();
+        _testRule = new TestRule();
+        setup.Rule(_testRule);
     }
 
     public class FactType
     {
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class TestRule : Rule

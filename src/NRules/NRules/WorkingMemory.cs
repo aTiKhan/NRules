@@ -7,15 +7,16 @@ namespace NRules;
 
 internal interface IWorkingMemory
 {
+    IFactIdentityComparer FactIdentityComparer { get; }
     IEnumerable<Fact> Facts { get; }
 
-    Fact GetFact(object factObject);
+    Fact? GetFact(object factObject);
     void AddFact(Fact fact);
     void UpdateFact(Fact fact);
     void RemoveFact(Fact fact);
 
-    IEnumerable<object> GetLinkedKeys(Activation activation);
-    Fact GetLinkedFact(Activation activation, object key);
+    IReadOnlyCollection<object> GetLinkedKeys(Activation activation);
+    Fact? GetLinkedFact(Activation activation, object key);
     void AddLinkedFact(Activation activation, object key, Fact fact);
     void UpdateLinkedFact(Activation activation, object key, Fact fact, object factObject);
     void RemoveLinkedFact(Activation activation, object key, Fact fact);
@@ -23,16 +24,16 @@ internal interface IWorkingMemory
     IAlphaMemory GetNodeMemory(IAlphaMemoryNode node);
     IBetaMemory GetNodeMemory(IBetaMemoryNode node);
 
-    T GetState<T>(INode node, Tuple tuple);
+    T? GetState<T>(INode node, Tuple tuple);
     T GetStateOrThrow<T>(INode node, Tuple tuple);
-    T RemoveState<T>(INode node, Tuple tuple);
+    T? RemoveState<T>(INode node, Tuple tuple);
     T RemoveStateOrThrow<T>(INode node, Tuple tuple);
     void SetState(INode node, Tuple tuple, object value);
 }
 
-internal class WorkingMemory : IWorkingMemory
+internal class WorkingMemory(IFactIdentityComparer factIdentityComparer) : IWorkingMemory
 {
-    private readonly Dictionary<object, Fact> _factMap = new();
+    private readonly Dictionary<object, Fact> _factMap = new(factIdentityComparer);
     private readonly Dictionary<Activation, Dictionary<object, Fact>> _linkedFactMap = new();
     private readonly Dictionary<TupleStateKey, object> _tupleStateMap = new();
 
@@ -40,11 +41,12 @@ internal class WorkingMemory : IWorkingMemory
 
     private readonly Dictionary<IBetaMemoryNode, IBetaMemory> _betaMap = new();
 
-    private static readonly object[] EmptyObjectList = Array.Empty<object>();
+    private static readonly object[] EmptyObjectList = [];
 
+    public IFactIdentityComparer FactIdentityComparer { get; } = factIdentityComparer;
     public IEnumerable<Fact> Facts => _factMap.Values;
 
-    public Fact GetFact(object factObject)
+    public Fact? GetFact(object factObject)
     {
         _factMap.TryGetValue(factObject, out var fact);
         return fact;
@@ -52,7 +54,7 @@ internal class WorkingMemory : IWorkingMemory
 
     public void AddFact(Fact fact)
     {
-        _factMap.Add(fact.RawObject, fact);
+        _factMap.Add(fact.RawObject!, fact);
     }
 
     public void UpdateFact(Fact fact)
@@ -63,17 +65,17 @@ internal class WorkingMemory : IWorkingMemory
 
     public void RemoveFact(Fact fact)
     {
-        if (!_factMap.Remove(fact.RawObject))
+        if (!_factMap.Remove(fact.RawObject!))
             throw new ArgumentException("Element does not exist", nameof(fact));
     }
 
-    public IEnumerable<object> GetLinkedKeys(Activation activation)
+    public IReadOnlyCollection<object> GetLinkedKeys(Activation activation)
     {
         if (!_linkedFactMap.TryGetValue(activation, out var factMap)) return EmptyObjectList;
         return factMap.Keys;
     }
 
-    public Fact GetLinkedFact(Activation activation, object key)
+    public Fact? GetLinkedFact(Activation activation, object key)
     {
         if (!_linkedFactMap.TryGetValue(activation, out var factMap)) return null;
 
@@ -141,7 +143,7 @@ internal class WorkingMemory : IWorkingMemory
         return memory;
     }
 
-    public T GetState<T>(INode node, Tuple tuple)
+    public T? GetState<T>(INode node, Tuple tuple)
     {
         var key = new TupleStateKey(node, tuple);
         if (_tupleStateMap.TryGetValue(key, out var value))
@@ -161,7 +163,7 @@ internal class WorkingMemory : IWorkingMemory
         throw new ArgumentException($"Tuple state not found. NodeType={node.GetType()}, StateType={typeof(T)}");
     }
 
-    public T RemoveState<T>(INode node, Tuple tuple)
+    public T? RemoveState<T>(INode node, Tuple tuple)
     {
         var key = new TupleStateKey(node, tuple);
         if (_tupleStateMap.TryGetValue(key, out var value))
@@ -191,23 +193,17 @@ internal class WorkingMemory : IWorkingMemory
         _tupleStateMap[key] = value;
     }
 
-    private readonly struct TupleStateKey : IEquatable<TupleStateKey>
+    private readonly struct TupleStateKey(INode node, Tuple tuple) : IEquatable<TupleStateKey>
     {
-        private readonly INode _node;
-        private readonly Tuple _tuple;
-
-        public TupleStateKey(INode node, Tuple tuple)
-        {
-            _node = node;
-            _tuple = tuple;
-        }
+        private readonly INode _node = node;
+        private readonly Tuple _tuple = tuple;
 
         public bool Equals(TupleStateKey other)
         {
             return _node.Equals(other._node) && _tuple.Equals(other._tuple);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is TupleStateKey other && Equals(other);
         }

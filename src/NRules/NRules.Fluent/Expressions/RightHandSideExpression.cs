@@ -7,25 +7,17 @@ using NRules.RuleModel.Builders;
 
 namespace NRules.Fluent.Expressions;
 
-internal class RightHandSideExpression : IRightHandSideExpression
+internal class RightHandSideExpression(ActionGroupBuilder builder, SymbolStack symbolStack) : IRightHandSideExpression
 {
-    private static readonly MethodInfo GetLinkedMethod = typeof(IContext).GetMethod(nameof(IContext.GetLinked));
-    private static readonly MethodInfo InsertLinkedMethod = typeof(IContext).GetMethod(nameof(IContext.InsertLinked));
-    private static readonly MethodInfo UpdateLinkedMethod = typeof(IContext).GetMethod(nameof(IContext.UpdateLinked));
+    private static readonly MethodInfo GetLinkedMethod = typeof(IContext).GetMethod(nameof(IContext.GetLinked))!;
+    private static readonly MethodInfo InsertLinkedMethod = typeof(IContext).GetMethod(nameof(IContext.InsertLinked))!;
+    private static readonly MethodInfo UpdateLinkedMethod = typeof(IContext).GetMethod(nameof(IContext.UpdateLinked))!;
 
     private int _linkedCount = 0;
-    private readonly ActionGroupBuilder _builder;
-    private readonly SymbolStack _symbolStack;
-
-    public RightHandSideExpression(ActionGroupBuilder builder, SymbolStack symbolStack)
-    {
-        _builder = builder;
-        _symbolStack = symbolStack;
-    }
 
     public IRightHandSideExpression Action(Expression<Action<IContext>> action, ActionTrigger actionTrigger)
     {
-        _builder.DslAction(_symbolStack.Scope.Declarations, action, actionTrigger);
+        builder.DslAction(symbolStack.Scope, action, actionTrigger);
         return this;
     }
 
@@ -40,6 +32,7 @@ internal class RightHandSideExpression : IRightHandSideExpression
     }
 
     public IRightHandSideExpression Yield<TFact>(Expression<Func<IContext, TFact>> yield)
+        where TFact : notnull
     {
         var context = yield.Parameters[0];
         var linkedFact = Expression.Parameter(typeof(TFact));
@@ -49,6 +42,7 @@ internal class RightHandSideExpression : IRightHandSideExpression
     }
 
     public IRightHandSideExpression Yield<TFact>(Expression<Func<IContext, TFact>> yieldInsert, Expression<Func<IContext, TFact, TFact>> yieldUpdate)
+        where TFact : notnull
     {
         var action = CreateYieldAction(yieldInsert, yieldUpdate);
         return Do(action);

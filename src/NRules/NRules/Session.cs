@@ -5,6 +5,7 @@ using System.Threading;
 using NRules.Diagnostics;
 using NRules.Extensibility;
 using NRules.Rete;
+using Tuple = System.Tuple;
 
 namespace NRules;
 
@@ -13,26 +14,6 @@ namespace NRules;
 /// Each session has its own working memory, and exposes operations that 
 /// manipulate facts in it, as well as fire matching rules.
 /// </summary>
-/// <event cref="IEventProvider.FactInsertingEvent">Before processing fact insertion.</event>
-/// <event cref="IEventProvider.FactInsertedEvent">After processing fact insertion.</event>
-/// <event cref="IEventProvider.FactUpdatingEvent">Before processing fact update.</event>
-/// <event cref="IEventProvider.FactUpdatedEvent">After processing fact update.</event>
-/// <event cref="IEventProvider.FactRetractingEvent">Before processing fact retraction.</event>
-/// <event cref="IEventProvider.FactRetractedEvent">After processing fact retraction.</event>
-/// <event cref="IEventProvider.ActivationCreatedEvent">When a set of facts matches a rule.</event>
-/// <event cref="IEventProvider.ActivationUpdatedEvent">When a set of facts is updated and re-matches a rule.</event>
-/// <event cref="IEventProvider.ActivationDeletedEvent">When a set of facts no longer matches a rule.</event>
-/// <event cref="IEventProvider.RuleFiringEvent">Before rule's actions are executed.</event>
-/// <event cref="IEventProvider.RuleFiredEvent">After rule's actions are executed.</event>
-/// <event cref="IEventProvider.LhsExpressionEvaluatedEvent">When an left-hand side expression was evaluated.</event>
-/// <event cref="IEventProvider.LhsExpressionFailedEvent">When there is an error during left-hand side expression evaluation,
-/// before throwing exception to the client.</event>
-/// <event cref="IEventProvider.AgendaExpressionEvaluatedEvent">When an agenda expression was evaluated.</event>
-/// <event cref="IEventProvider.AgendaExpressionFailedEvent">When there is an error during agenda expression evaluation,
-/// before throwing exception to the client.</event>
-/// <event cref="IEventProvider.RhsExpressionEvaluatedEvent">When an right-hand side expression was evaluated.</event>
-/// <event cref="IEventProvider.RhsExpressionFailedEvent">When there is an error during right-hand side expression evaluation,
-/// before throwing exception to the client.</event>
 /// <exception cref="RuleLhsExpressionEvaluationException">Error while evaluating any of the rules' left-hand side expressons.
 /// This exception can also be observed as an event <see cref="IEventProvider.LhsExpressionEvaluatedEvent"/>.</exception>
 /// <exception cref="AgendaExpressionEvaluationException">Error while evaluating any of the agenda expressions.
@@ -77,7 +58,7 @@ public interface ISession : ISessionSchemaProvider
     /// Action interceptor for the current rules session.
     /// If provided, invocation of rule actions is delegated to the interceptor.
     /// </summary>
-    IActionInterceptor ActionInterceptor { get; set; }
+    IActionInterceptor? ActionInterceptor { get; set; }
 
     /// <summary>
     /// Inserts new facts to the rules engine memory.
@@ -234,9 +215,9 @@ public interface ISession : ISessionSchemaProvider
     /// <remarks>
     /// Bulk session operations are more performant than individual operations on a set of facts.
     /// </remarks>
-    /// <param name="facts">Fact to remove.</param>
+    /// <param name="fact">Fact to remove.</param>
     /// <returns>Whether the fact was retracted or not.</returns>
-    bool TryRetract(object facts);
+    bool TryRetract(object fact);
 
     /// <summary>
     /// Propagates all queued linked facts.
@@ -288,8 +269,8 @@ internal interface ISessionInternal : ISession
 {
     new IAgendaInternal Agenda { get; }
 
-    IEnumerable<object> GetLinkedKeys(Activation activation);
-    object GetLinked(Activation activation, object key);
+    IReadOnlyCollection<object> GetLinkedKeys(Activation activation);
+    object? GetLinked(Activation activation, object key);
     void QueueInsertLinked(Activation activation, IEnumerable<KeyValuePair<object, object>> keyedFacts);
     void QueueUpdateLinked(Activation activation, IEnumerable<KeyValuePair<object, object>> keyedFacts);
     void QueueRetractLinked(Activation activation, IEnumerable<KeyValuePair<object, object>> keyedFacts);
@@ -307,7 +288,7 @@ internal sealed class Session : ISessionInternal
     private readonly IMetricsAggregator _metricsAggregator;
     private readonly IActionExecutor _actionExecutor;
     private readonly IExecutionContext _executionContext;
-    private readonly Queue<LinkedFactSet> _linkedFacts = new();
+    private readonly LinkedList<LinkedFactSet> _linkedFacts = new();
 
     internal Session(
         INetwork network,
@@ -318,7 +299,7 @@ internal sealed class Session : ISessionInternal
         IActionExecutor actionExecutor,
         IIdGenerator idGenerator,
         IDependencyResolver dependencyResolver,
-        IActionInterceptor actionInterceptor)
+        IActionInterceptor? actionInterceptor)
     {
         _network = network;
         _workingMemory = workingMemory;
@@ -337,7 +318,7 @@ internal sealed class Session : ISessionInternal
     public IEventProvider Events => _eventAggregator;
     public IMetricsProvider Metrics => _metricsAggregator;
     public IDependencyResolver DependencyResolver { get; set; }
-    public IActionInterceptor ActionInterceptor { get; set; }
+    public IActionInterceptor? ActionInterceptor { get; set; }
 
     IAgendaInternal ISessionInternal.Agenda => _agenda;
 
@@ -397,12 +378,12 @@ internal sealed class Session : ISessionInternal
 
     public void Insert(object fact)
     {
-        InsertAll(new[] { fact });
+        InsertAll([fact]);
     }
 
     public bool TryInsert(object fact)
     {
-        var result = TryInsertAll(new[] {fact});
+        var result = TryInsertAll([fact]);
         return result.FailedCount == 0;
     }
 
@@ -456,12 +437,12 @@ internal sealed class Session : ISessionInternal
 
     public void Update(object fact)
     {
-        UpdateAll(new[] {fact});
+        UpdateAll([fact]);
     }
 
     public bool TryUpdate(object fact)
     {
-        var result = TryUpdateAll(new[] {fact});
+        var result = TryUpdateAll([fact]);
         return result.FailedCount == 0;
     }
 
@@ -514,12 +495,12 @@ internal sealed class Session : ISessionInternal
 
     public void Retract(object fact)
     {
-        RetractAll(new[] {fact});
+        RetractAll([fact]);
     }
 
     public bool TryRetract(object fact)
     {
-        var result = TryRetractAll(new[] {fact});
+        var result = TryRetractAll([fact]);
         return result.FailedCount == 0;
     }
 
@@ -531,7 +512,8 @@ internal sealed class Session : ISessionInternal
         var factSets = new List<ILinkedFactSet>(_linkedFacts.Count);
         while (_linkedFacts.Count > 0)
         {
-            var item = _linkedFacts.Dequeue();
+            var item = _linkedFacts.First.Value;
+            _linkedFacts.RemoveFirst();
             factSets.Add(item);
             switch (item.Action)
             {
@@ -556,13 +538,13 @@ internal sealed class Session : ISessionInternal
         return factSets;
     }
 
-    public IEnumerable<object> GetLinkedKeys(Activation activation)
+    public IReadOnlyCollection<object> GetLinkedKeys(Activation activation)
     {
         var keys = _workingMemory.GetLinkedKeys(activation);
         return keys;
     }
 
-    public object GetLinked(Activation activation, object key)
+    public object? GetLinked(Activation activation, object key)
     {
         var factWrapper = _workingMemory.GetLinkedFact(activation, key);
         return factWrapper?.Object;
@@ -582,7 +564,7 @@ internal sealed class Session : ISessionInternal
             }
             factWrapper = new SyntheticFact(keyedFact.Value);
             factWrapper.Source = new LinkedFactSource(activation);
-            toAdd.Add(System.Tuple.Create(key, factWrapper));
+            toAdd.Add(Tuple.Create(key, factWrapper));
             toPropagate.Add(factWrapper);
         }
         foreach (var item in toAdd)
@@ -591,10 +573,10 @@ internal sealed class Session : ISessionInternal
         }
 
         LinkedFactSet current;
-        if (_linkedFacts.Count == 0 || (current = _linkedFacts.Peek()).Action != LinkedFactAction.Insert)
+        if (_linkedFacts.Count == 0 || (current = _linkedFacts.Last.Value).Action != LinkedFactAction.Insert)
         {
             current = new LinkedFactSet(LinkedFactAction.Insert);
-            _linkedFacts.Enqueue(current);
+            _linkedFacts.AddLast(current);
         }
         current.Facts.AddRange(toPropagate);
     }
@@ -612,7 +594,7 @@ internal sealed class Session : ISessionInternal
                 throw new ArgumentException($"Linked fact does not exist. Key={key}");
             }
             factWrapper.Source = new LinkedFactSource(activation);
-            toUpdate.Add(System.Tuple.Create(key, factWrapper, keyedFact.Value));
+            toUpdate.Add(Tuple.Create(key, factWrapper, keyedFact.Value));
             toPropagate.Add(factWrapper);
         }
         foreach (var item in toUpdate)
@@ -621,10 +603,10 @@ internal sealed class Session : ISessionInternal
         }
 
         LinkedFactSet current;
-        if (_linkedFacts.Count == 0 || (current = _linkedFacts.Peek()).Action != LinkedFactAction.Update)
+        if (_linkedFacts.Count == 0 || (current = _linkedFacts.Last.Value).Action != LinkedFactAction.Update)
         {
             current = new LinkedFactSet(LinkedFactAction.Update);
-            _linkedFacts.Enqueue(current);
+            _linkedFacts.AddLast(current);
         }
         current.Facts.AddRange(toPropagate);
     }
@@ -642,7 +624,7 @@ internal sealed class Session : ISessionInternal
                 throw new ArgumentException($"Linked fact does not exist. Key={key}");
             }
             factWrapper.Source = new LinkedFactSource(activation);
-            toRemove.Add(System.Tuple.Create(key, factWrapper));
+            toRemove.Add(Tuple.Create(key, factWrapper));
             toPropagate.Add(factWrapper);
         }
         foreach (var item in toRemove)
@@ -652,10 +634,10 @@ internal sealed class Session : ISessionInternal
         }
 
         LinkedFactSet current;
-        if (_linkedFacts.Count == 0 || (current = _linkedFacts.Peek()).Action != LinkedFactAction.Retract)
+        if (_linkedFacts.Count == 0 || (current = _linkedFacts.Last.Value).Action != LinkedFactAction.Retract)
         {
             current = new LinkedFactSet(LinkedFactAction.Retract);
-            _linkedFacts.Enqueue(current);
+            _linkedFacts.AddLast(current);
         }
         current.Facts.AddRange(toPropagate);
     }
@@ -667,14 +649,14 @@ internal sealed class Session : ISessionInternal
         foreach (var key in linkedKeys)
         {
             var linkedFact = GetLinked(activation, key);
-            keyedFacts.Add(new KeyValuePair<object, object>(key, linkedFact));
+            keyedFacts.Add(new KeyValuePair<object, object>(key, linkedFact!));
         }
         QueueRetractLinked(activation, keyedFacts);
     }
 
     public int Fire()
     {
-        return Fire(default(CancellationToken));
+        return Fire(CancellationToken.None);
     }
 
     public int Fire(CancellationToken cancellationToken)
@@ -684,7 +666,7 @@ internal sealed class Session : ISessionInternal
 
     public int Fire(int maxRulesNumber)
     {
-        return Fire(maxRulesNumber, default);
+        return Fire(maxRulesNumber, CancellationToken.None);
     }
 
     public int Fire(int maxRulesNumber, CancellationToken cancellationToken)

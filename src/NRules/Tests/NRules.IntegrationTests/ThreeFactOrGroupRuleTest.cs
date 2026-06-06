@@ -1,14 +1,18 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
 using NRules.RuleModel;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
 
 public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
 {
+    private TestRule _testRule = null!;
+
     [Fact]
     public void Fire_MatchingMainFactAndNoneOfOrGroup_DoesNotFire()
     {
@@ -21,7 +25,7 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -38,7 +42,7 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -51,8 +55,8 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Insert(fact1);
         Session.Insert(fact2);
 
-        IFactMatch[] matches = null;
-        GetRuleInstance<TestRule>().Action = ctx =>
+        IFactMatch[]? matches = null;
+        _testRule.Action = ctx =>
         {
             matches = ctx.Match.Facts.ToArray();
         };
@@ -61,7 +65,8 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
+        Assert.NotNull(matches);
         Assert.Equal(3, matches.Length);
         Assert.Equal("fact1", matches[0].Declaration.Name);
         Assert.Same(fact1, matches[0].Value);
@@ -83,8 +88,8 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Insert(fact2);
         Session.Insert(fact3);
 
-        IFactMatch[] matches = null;
-        GetRuleInstance<TestRule>().Action = ctx =>
+        IFactMatch[]? matches = null;
+        _testRule.Action = ctx =>
         {
             matches = ctx.Match.Facts.ToArray();
         };
@@ -93,7 +98,8 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
+        Assert.NotNull(matches);
         Assert.Equal(3, matches.Length);
         Assert.Equal("fact1", matches[0].Declaration.Name);
         Assert.Same(fact1, matches[0].Value);
@@ -119,7 +125,7 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
     }
 
     [Fact]
@@ -140,7 +146,7 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
     }
 
     [Fact]
@@ -159,7 +165,7 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -179,7 +185,7 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -198,7 +204,7 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -218,29 +224,33 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
-        setup.Rule<TestRule>();
+        _testRule = new TestRule();
+        setup.Rule(_testRule);
     }
 
     public class FactType1
     {
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class FactType2
     {
-        public string TestProperty { get; set; }
-        public string JoinProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
+        public string? JoinProperty { get; set; }
     }
 
     public class FactType3
     {
-        public string TestProperty { get; set; }
-        public string JoinProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
+        public string? JoinProperty { get; set; }
     }
 
     public class TestRule : Rule
@@ -249,9 +259,9 @@ public class ThreeFactOrGroupRuleTest : BaseRulesTestFixture
 
         public override void Define()
         {
-            FactType1 fact1 = null;
-            FactType2 fact2 = null;
-            FactType3 fact3 = null;
+            FactType1 fact1 = null!;
+            FactType2 fact2 = null!;
+            FactType3 fact3 = null!;
 
             When()
                 .Match(() => fact1, f => f.TestProperty.StartsWith("Valid"))

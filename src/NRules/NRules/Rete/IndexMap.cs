@@ -17,8 +17,8 @@ internal class IndexMap : IEquatable<IndexMap>
         _map = map;
     }
 
-    public static IndexMap Empty = new(Array.Empty<int>());
-    public static IndexMap Unit = new(new[] {0});
+    public static readonly IndexMap Empty = new([]);
+    public static readonly IndexMap Unit = new([0]);
 
     public bool HasData => _map.Any(x => x >= 0);
     public int Length => _map.Length;
@@ -40,6 +40,8 @@ internal class IndexMap : IEquatable<IndexMap>
     
     public bool Equals(IndexMap other)
     {
+        if (ReferenceEquals(null, other))
+            return false;
         if (_map.Length != other._map.Length) 
             return false;
         
@@ -52,7 +54,7 @@ internal class IndexMap : IEquatable<IndexMap>
         return true;
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         if (ReferenceEquals(null, obj)) return false;
         if (ReferenceEquals(this, obj)) return true;

@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -19,9 +21,12 @@ public class ForwardChainingTransitiveTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule<FactToCalc1Rule>().FiredTimes(1);
-        Verify.Rule<Calc1ToCalc2Rule>().FiredTimes(1);
-        Verify.Rule<Calc1Calc2ToCalc3Rule>().FiredTimes(1);
+        Verify(s =>
+        {
+            s.Rule<FactToCalc1Rule>().Fired();
+            s.Rule<Calc1ToCalc2Rule>().Fired();
+            s.Rule<Calc1Calc2ToCalc3Rule>().Fired();
+        });
     }
 
     [Fact]
@@ -40,12 +45,18 @@ public class ForwardChainingTransitiveTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule<FactToCalc1Rule>().FiredTimes(2);
-        Verify.Rule<Calc1ToCalc2Rule>().FiredTimes(2);
-        Verify.Rule<Calc1Calc2ToCalc3Rule>().FiredTimes(2);
+        Verify(s =>
+        {
+            s.Rule<FactToCalc1Rule>().Fired();
+            s.Rule<Calc1ToCalc2Rule>().Fired();
+            s.Rule<Calc1Calc2ToCalc3Rule>().Fired();
+            s.Rule<FactToCalc1Rule>().Fired();
+            s.Rule<Calc1ToCalc2Rule>().Fired();
+            s.Rule<Calc1Calc2ToCalc3Rule>().Fired();
+        });
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<FactToCalc1Rule>();
         setup.Rule<Calc1ToCalc2Rule>();
@@ -54,29 +65,34 @@ public class ForwardChainingTransitiveTest : BaseRulesTestFixture
 
     public class FactType
     {
-        public string Value { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
     public class Calc1
     {
-        public string Key { get; set; }
-        public string Value { get; set; }
+        [NotNull]
+        public string? Key { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
     public class Calc2
     {
-        public string Key { get; set; }
-        public string Value { get; set; }
+        [NotNull]
+        public string? Key { get; set; }
+        [NotNull]
+        public string? Value { get; set; }
     }
 
     public class Calc3 : IEquatable<Calc3>
     {
-        public bool Equals(Calc3 other)
+        public bool Equals(Calc3? other)
         {
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             if (obj is null)
                 return false;
@@ -97,7 +113,7 @@ public class ForwardChainingTransitiveTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            FactType o = null;
+            FactType o = null!;
 
             When()
                 .Match(() => o);
@@ -114,7 +130,7 @@ public class ForwardChainingTransitiveTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            Calc1 calc = null;
+            Calc1 calc = null!;
 
             When()
                 .Match(() => calc);
@@ -131,8 +147,8 @@ public class ForwardChainingTransitiveTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            Calc1 calc1 = null;
-            Calc2 calc2 = null;
+            Calc1 calc1 = null!;
+            Calc2 calc2 = null!;
 
             When()
                 .Match(() => calc1)

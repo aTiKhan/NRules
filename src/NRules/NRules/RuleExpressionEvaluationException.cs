@@ -1,4 +1,6 @@
 using System;
+using System.Runtime.Serialization;
+using System.Security;
 
 namespace NRules;
 
@@ -8,21 +10,21 @@ namespace NRules;
 [Serializable]
 public abstract class RuleExpressionEvaluationException : RuleExecutionException
 {
-    internal RuleExpressionEvaluationException(string message, string expression, Exception innerException)
+    private protected RuleExpressionEvaluationException(string message, string expression, Exception innerException)
         : base(message, innerException)
     {
         Expression = expression;
     }
 
-    [System.Security.SecuritySafeCritical]
-    protected RuleExpressionEvaluationException(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+    [SecuritySafeCritical]
+    protected RuleExpressionEvaluationException(SerializationInfo info, StreamingContext context)
         : base(info, context)
     {
         Expression = info.GetString("Expression");
     }
 
-    [System.Security.SecurityCritical]
-    public override void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+    [SecurityCritical]
+    public override void GetObjectData(SerializationInfo info, StreamingContext context)
     {
         if (info == null)
         {

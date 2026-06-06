@@ -13,23 +13,23 @@ namespace NRules.Utilities;
 internal interface IRuleExpressionCompiler
 {
     IExpressionCompiler ExpressionCompiler { get; set; }
-    ILhsExpression<TResult> CompileLhsExpression<TResult>(ExpressionElement element, List<Declaration> declarations);
+    ILhsExpression<TResult> CompileLhsExpression<TResult>(ExpressionElement element, IReadOnlyCollection<Declaration> declarations);
     ILhsFactExpression<TResult> CompileLhsFactExpression<TResult>(ExpressionElement element);
-    ILhsTupleExpression<TResult> CompileLhsTupleExpression<TResult>(ExpressionElement element, List<Declaration> declarations);
+    ILhsTupleExpression<TResult> CompileLhsTupleExpression<TResult>(ExpressionElement element, IReadOnlyCollection<Declaration> declarations);
     IActivationExpression<TResult> CompileActivationExpression<TResult>(ExpressionElement element,
-        List<Declaration> declarations, IndexMap tupleFactMap);
-    IRuleAction CompileAction(ActionElement element, List<Declaration> declarations,
-        List<DependencyElement> dependencies, IndexMap tupleFactMap);
-    IAggregateExpression CompileAggregateExpression(NamedExpressionElement element, List<Declaration> declarations);
+        IReadOnlyCollection<Declaration> declarations, IndexMap tupleFactMap);
+    IRuleAction CompileAction(ActionElement element, IReadOnlyCollection<Declaration> declarations,
+        IReadOnlyList<DependencyElement> dependencies, IndexMap tupleFactMap);
+    IAggregateExpression CompileAggregateExpression(NamedExpressionElement element, IReadOnlyCollection<Declaration> declarations);
 }
 
 internal class RuleExpressionCompiler : IRuleExpressionCompiler
 {
     public IExpressionCompiler ExpressionCompiler { get; set; } = new ExpressionCompiler();
 
-    public ILhsExpression<TResult> CompileLhsExpression<TResult>(ExpressionElement element, List<Declaration> declarations)
+    public ILhsExpression<TResult> CompileLhsExpression<TResult>(ExpressionElement element, IReadOnlyCollection<Declaration> declarations)
     {
-        if (element.Imports.Count() == 1 &&
+        if (element.Imports.Count == 1 &&
             Equals(element.Imports.Single(), declarations.Last()))
         {
             return CompileLhsFactExpression<TResult>(element);
@@ -41,13 +41,13 @@ internal class RuleExpressionCompiler : IRuleExpressionCompiler
     {
         var optimizedExpression = ExpressionOptimizer.Optimize<Func<Fact, TResult>>(
             element.Expression, IndexMap.Unit, tupleInput: false, factInput: true);
-        var @delegate = optimizedExpression.Compile();
+        var @delegate = ExpressionCompiler.Compile(optimizedExpression);
         var argumentMap = new ArgumentMap(IndexMap.Unit, 1);
         var expression = new LhsFactExpression<TResult>(element.Expression, @delegate, argumentMap);
         return expression;
     }
 
-    public ILhsTupleExpression<TResult> CompileLhsTupleExpression<TResult>(ExpressionElement element, List<Declaration> declarations)
+    public ILhsTupleExpression<TResult> CompileLhsTupleExpression<TResult>(ExpressionElement element, IReadOnlyCollection<Declaration> declarations)
     {
         var factMap = IndexMap.CreateMap(element.Imports, declarations);
         var optimizedExpression = ExpressionOptimizer.Optimize<Func<Tuple, TResult>>(
@@ -58,7 +58,7 @@ internal class RuleExpressionCompiler : IRuleExpressionCompiler
         return expression;
     }
 
-    public ILhsExpression<TResult> CompileLhsTupleFactExpression<TResult>(ExpressionElement element, List<Declaration> declarations)
+    public ILhsExpression<TResult> CompileLhsTupleFactExpression<TResult>(ExpressionElement element, IReadOnlyCollection<Declaration> declarations)
     {
         var factMap = IndexMap.CreateMap(element.Imports, declarations);
         var optimizedExpression = ExpressionOptimizer.Optimize<Func<Tuple, Fact, TResult>>(
@@ -70,7 +70,7 @@ internal class RuleExpressionCompiler : IRuleExpressionCompiler
     }
 
     public IActivationExpression<TResult> CompileActivationExpression<TResult>(ExpressionElement element,
-        List<Declaration> declarations, IndexMap tupleFactMap)
+        IReadOnlyCollection<Declaration> declarations, IndexMap tupleFactMap)
     {
         var activationFactMap = IndexMap.CreateMap(element.Imports, declarations);
         var factMap = IndexMap.Compose(tupleFactMap, activationFactMap);
@@ -82,8 +82,8 @@ internal class RuleExpressionCompiler : IRuleExpressionCompiler
         return expression;
     }
 
-    public IRuleAction CompileAction(ActionElement element, List<Declaration> declarations,
-        List<DependencyElement> dependencies, IndexMap tupleFactMap)
+    public IRuleAction CompileAction(ActionElement element, IReadOnlyCollection<Declaration> declarations,
+        IReadOnlyList<DependencyElement> dependencies, IndexMap tupleFactMap)
     {
         var activationFactMap = IndexMap.CreateMap(element.Imports, declarations);
         var factMap = IndexMap.Compose(tupleFactMap, activationFactMap);
@@ -110,7 +110,7 @@ internal class RuleExpressionCompiler : IRuleExpressionCompiler
         }
     }
     
-    public IAggregateExpression CompileAggregateExpression(NamedExpressionElement element, List<Declaration> declarations)
+    public IAggregateExpression CompileAggregateExpression(NamedExpressionElement element, IReadOnlyCollection<Declaration> declarations)
     {
         var compiledExpression = CompileLhsExpression<object>(element, declarations);
         var expression = new AggregateExpression(element.Name, compiledExpression);

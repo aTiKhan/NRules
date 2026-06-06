@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
 using NRules.RuleModel;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -16,7 +18,7 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(0);
+        Verify(x => x.Rule().Fired(Times.Never));
     }
 
     [Fact]
@@ -34,8 +36,7 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal(2, GetFiredFact<IGrouping<long, string>>().Count());
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<long, string>>(f => f.Count() == 2)));
     }
 
     [Fact]
@@ -54,9 +55,7 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
-        Assert.Equal(2, GetFiredFact<IGrouping<long, string>>(0).Count());
-        Assert.Equal(2, GetFiredFact<IGrouping<long, string>>(1).Count());
+        Verify(s => s.Rule().Fired(Times.Twice, Matched.Fact<IGrouping<long, string>>(f => f.Count() == 2)));
     }
 
     [Fact]
@@ -77,8 +76,7 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal(2, GetFiredFact<IGrouping<long, string>>().Count());
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<long, string>>(f => f.Count() == 2)));
     }
 
     [Fact]
@@ -100,9 +98,8 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        Assert.Equal(2, GetFiredFact<IGrouping<long, string>>().Count());
-    }
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<long, string>>(f => f.Count() == 2)));
+   }
 
     [Fact]
     public void Fire_TwoFactsForOneGroupAndTwoForAnotherOneUpdatedToFirstGroup_FiresOnceWithThreeFactsInOneGroup()
@@ -123,9 +120,7 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        var actual = GetFiredFact<IGrouping<long, string>>().Count();
-        Assert.Equal(3, actual);
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<long, string>>(f => f.Count() == 3)));
     }
 
     [Fact]
@@ -147,9 +142,7 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
-        Assert.Equal(2, GetFiredFact<IGrouping<long, string>>(0).Count());
-        Assert.Equal(2, GetFiredFact<IGrouping<long, string>>(1).Count());
+        Verify(s => s.Rule().Fired(Times.Twice, Matched.Fact<IGrouping<long, string>>(f => f.Count() == 2)));
     }
 
     [Fact]
@@ -174,16 +167,14 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
-        Assert.Equal(2, GetFiredFact<IGrouping<long, string>>(0).Count());
-        Assert.Equal(2, GetFiredFact<IGrouping<long, string>>(1).Count());
+        Verify(s => s.Rule().Fired(Times.Twice, Matched.Fact<IGrouping<long, string>>(f => f.Count() == 2)));
     }
 
     [Fact]
     public void Fire_TwoFactsOneGroupAnotherFactFilteredOut_FiresOnceAggregateHasSource()
     {
         //Arrange
-        IFact matchedGroup = null;
+        IFact? matchedGroup = null;
         Session.Events.RuleFiredEvent += (sender, args) =>
         {
             matchedGroup = args.Facts.Single();
@@ -200,7 +191,7 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
+        Verify(x => x.Rule().Fired());
         Assert.NotNull(matchedGroup);
         Assert.NotNull(matchedGroup.Source);
         Assert.Equal(FactSourceType.Aggregate, matchedGroup.Source.SourceType);
@@ -209,7 +200,7 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
             item => Assert.Same(fact2, item.Value));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
@@ -217,14 +208,15 @@ public class OneFactOneGroupByRuleTest : BaseRulesTestFixture
     public class FactType
     {
         public long GroupProperty { get; set; }
-        public string TestProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            IEnumerable<string> group = null;
+            IEnumerable<string> group = null!;
 
             When()
                 .Query(() => group, x => x

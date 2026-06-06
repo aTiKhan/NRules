@@ -1,7 +1,9 @@
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -22,23 +24,25 @@ public class ForwardChainingLinkedToSelfTest : BaseRulesTestFixture
         Session.Retract(order2);
 
         //Assert
-        Verify.Rule().FiredTimes(3);
+        Verify(x => x.Rule().Fired(Times.Exactly(3)));
         Assert.Equal(0, Session.Query<FactType4>().Count());
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<ForwardChainingRule>();
     }
 
     public class FactType1
     {
-        public string GroupKey { get; set; }
+        [NotNull]
+        public string? GroupKey { get; set; }
     }
 
     public class FactType2
     {
-        public string Key { get; set; }
+        [NotNull]
+        public string? Key { get; set; }
     }
 
     public class FactType3
@@ -55,9 +59,9 @@ public class ForwardChainingLinkedToSelfTest : BaseRulesTestFixture
     {
         public override void Define()
         {
-            IGrouping<string, FactType1> facts = null;
-            IEnumerable<FactType2> otherFacts = null;
-            FactType4 projection = null;
+            IGrouping<string, FactType1> facts = null!;
+            IEnumerable<FactType2> otherFacts = null!;
+            FactType4 projection = null!;
 
             When()
                 .Query(() => facts, q => q

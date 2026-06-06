@@ -1,6 +1,8 @@
-﻿using System.Linq;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using NRules.Fluent.Dsl;
 using NRules.IntegrationTests.TestAssets;
+using NRules.Testing;
 using Xunit;
 
 namespace NRules.IntegrationTests;
@@ -29,18 +31,12 @@ public class JoinFollowedByGroupByOnDifferentKeyTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(3);
-        var firedFacts = new[]
+        Verify(x =>
         {
-            GetFiredFact<IGrouping<string, FactType2>>(0),
-            GetFiredFact<IGrouping<string, FactType2>>(1),
-            GetFiredFact<IGrouping<string, FactType2>>(2)
-        };
-
-        var correctNumberofFactsPerGroup = firedFacts.Count(x => x.Count() == 1) == 1 &&
-                                           firedFacts.Count(x => x.Count() == 2) == 1 &&
-                                           firedFacts.Count(x => x.Count() == 3) == 1;
-        Assert.True(correctNumberofFactsPerGroup);
+            x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Count() == 2));
+            x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Count() == 1));
+            x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Count() == 3));
+        });
     }
 
     [Fact]
@@ -71,15 +67,7 @@ public class JoinFollowedByGroupByOnDifferentKeyTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(2);
-        var firedFacts = new[]
-        {
-            GetFiredFact<IGrouping<string, FactType2>>(0),
-            GetFiredFact<IGrouping<string, FactType2>>(1)
-        };
-
-        var correctNumberofFactsPerGroup = firedFacts.Count(x => x.Count() == 3) == 2;
-        Assert.True(correctNumberofFactsPerGroup);
+        Verify(s => s.Rule().Fired(Times.Twice, Matched.Fact<IGrouping<string, FactType2>>(g => g.Count() == 3)));
     }
 
     [Fact]
@@ -107,14 +95,7 @@ public class JoinFollowedByGroupByOnDifferentKeyTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert
-        Verify.Rule().FiredTimes(1);
-        var firedFacts = new[]
-        {
-            GetFiredFact<IGrouping<string, FactType2>>(0)
-        };
-
-        var correctNumberofFactsPerGroup = firedFacts.Count(x => x.Count() == 3) == 1;
-        Assert.True(correctNumberofFactsPerGroup);
+        Verify(x => x.Rule().Fired(Matched.Fact<IGrouping<string, FactType2>>(g => g.Count() == 3)));
     }
 
     [Fact]
@@ -137,14 +118,14 @@ public class JoinFollowedByGroupByOnDifferentKeyTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert - 1
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
 
         //Act - 2
         Session.Update(fact11);
         Session.Fire();
 
         //Assert - 2
-        Verify.Rule().FiredTimes(3);
+        Verify(x => x.Rule().Fired(Times.Exactly(3)));
     }
 
     [Fact]
@@ -167,40 +148,45 @@ public class JoinFollowedByGroupByOnDifferentKeyTest : BaseRulesTestFixture
         Session.Fire();
 
         //Assert - 1
-        Verify.Rule().FiredTimes(2);
+        Verify(x => x.Rule().Fired(Times.Twice));
 
         //Act - 2
         Session.Update(fact61);
         Session.Fire();
 
         //Assert - 2
-        Verify.Rule().FiredTimes(3);
+        Verify(x => x.Rule().Fired(Times.Exactly(3)));
     }
 
-    protected override void SetUpRules(Testing.IRepositorySetup setup)
+    protected override void SetUpRules(IRulesTestSetup setup)
     {
         setup.Rule<TestRule>();
     }
 
     public class FactType1
     {
-        public string TestProperty { get; set; }
-        public string JoinProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
+        [NotNull]
+        public string? JoinProperty { get; set; }
     }
 
     public class FactType2
     {
-        public string TestProperty { get; set; }
-        public string JoinProperty { get; set; }
-        public string GroupProperty { get; set; }
+        [NotNull]
+        public string? TestProperty { get; set; }
+        [NotNull]
+        public string? JoinProperty { get; set; }
+        [NotNull]
+        public string? GroupProperty { get; set; }
     }
 
     public class TestRule : Rule
     {
         public override void Define()
         {
-            FactType1 fact = null;
-            IGrouping<string, FactType2> group = null;
+            FactType1 fact = null!;
+            IGrouping<string, FactType2> group = null!;
 
             When()
                 .Match(() => fact, f => f.TestProperty.StartsWith("Valid"))
